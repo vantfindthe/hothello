@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass
 
@@ -44,6 +45,8 @@ class Result:
     plan: Plan
     color: str
     glyphs: str
+    sections: dict[str, tuple[int, int]]
+    private: bool = False
 
 
 def resolve_size(display: dict, measured: tuple[int, int] | None,
@@ -80,15 +83,27 @@ def current_headlines(cfg: dict, store: Store, now: float) -> list[Headline]:
     )
 
 
+def is_private(cfg: dict) -> bool:
+    """Privacy mode: the config switch, or MOTDPLUS_PRIVACY=1 for a single session."""
+    env = os.environ.get("MOTDPLUS_PRIVACY", "").strip().lower()
+    if env in ("1", "on", "yes", "true"):
+        return True
+    if env in ("0", "off", "no", "false"):
+        return False
+    return bool(cfg.get("privacy", {}).get("enabled"))
+
+
 def plan(cfg: dict, store: Store, *, measured: tuple[int, int] | None, cols: int | None = None,
-         rows: int | None = None, now: float | None = None, glyphs: str | None = None) -> Plan:
+         rows: int | None = None, now: float | None = None, glyphs: str | None = None,
+         private: bool | None = None) -> Plan:
     display, theme_cfg = cfg["display"], cfg["theme"]
     cols, rows = resolve_size(display, measured, cols, rows)
     usable = cols - 1  # never fill the last column: some consoles wrap early
     headlines = current_headlines(cfg, store, now or time.time())
     frame = display.get("frame", "none")
-    art_rows = 2 if frame != "none" else (1 if display.get("credit", True) else 0)
-    header_rows = 2 if theme_cfg.get("segments") else 0
+    art_rows = 2 if frame != "none" else (1 if display.get("credit", True) or display.get("title", True) else 0)
+    header_rows = 2 if theme_cfg.get("header", True) and theme_cfg.get("segments") else 0
+    private = is_private(cfg) if private is None else private
     reserve = int(display.get("reserve_rows", 2))
 
     system_cfg = dict(cfg.get("system") or {})
@@ -98,7 +113,7 @@ def plan(cfg: dict, store: Store, *, measured: tuple[int, int] | None, cols: int
     theme = themes.get_theme(theme_cfg.get("name", themes.DEFAULT_THEME))
 
     def system_rows() -> int:
-        lines = render.system_block(info, system_cfg, theme, gl, plain, usable)
+        lines = render.system_block(info, system_cfg, theme, gl, plain, usable, private=private)
         return len(lines) + 1 if lines else 0
 
     sys_rows = system_rows()
@@ -124,12 +139,15 @@ def plan(cfg: dict, store: Store, *, measured: tuple[int, int] | None, cols: int
 def build(cfg: dict, store: Store, *, cols: int | None = None, rows: int | None = None,
           color: str | None = None, glyphs: str | None = None, hyperlinks: bool | None = None,
           shell: str | None = None, now: float | None = None, dry_run: bool = False,
-          prefer_id: int | None = None, measured: tuple[int, int] | None | str = "auto") -> Result:
+          prefer_id: int | None = None, measured: tuple[int, int] | None | str = "auto",
+          private: bool | None = None) -> Result:
     now = now or time.time()
     display, art_cfg, news_cfg, theme_cfg = cfg["display"], cfg["art"], cfg["news"], cfg["theme"]
     if measured == "auto":
         measured = term.measure()
-    p = plan(cfg, store, measured=measured, cols=cols, rows=rows, now=now, glyphs=glyphs)  # type: ignore[arg-type]
+    private = is_private(cfg) if private is None else private
+    p = plan(cfg, store, measured=measured, cols=cols, rows=rows, now=now, glyphs=glyphs,  # type: ignore[arg-type]
+             private=private)
 
     theme = themes.get_theme(theme_cfg.get("name", themes.DEFAULT_THEME))
     gl = themes.resolve_glyphs(glyphs or theme_cfg.get("glyphs", "auto"))
@@ -148,15 +166,20 @@ def build(cfg: dict, store: Store, *, cols: int | None = None, rows: int | None 
     if pick.art and pick.art.categories:
         selected = set(art_cfg.get("categories") or [])
         category = next((name for cid, name in pick.art.categories if cid in selected), pick.art.categories[0][1])
-    header = render.header_line(
-        sysinfo.segments(theme_cfg, now=now, shell=shell, category=category), theme, gl, painter, p.usable
-    )
+    header = ""
+    if theme_cfg.get("header", True):
+        alias = str(cfg.get("privacy", {}).get("alias") or "friend")
+        header = render.header_line(
+            sysinfo.segments(theme_cfg, now=now, shell=shell, category=category, private=private, alias=alias),
+            theme, gl, painter, p.usable,
+        )
     art_lines = render.art_block(pick, theme, theme_cfg.get("art_style", "theme"), gl, painter, p.usable, display, links)
     notice: list[str] = []
     if art_cfg.get("enabled", True) and not art_lines and store.art_count() == 0:
         notice = render.first_run_notice(painter, theme, gl, p.usable)
     news_lines = render.news_block(p.headlines, theme, gl, painter, p.usable, news_cfg, links, now)
     system_lines = render.system_block(p.system, p.system_cfg or {}, theme, gl, painter, p.usable,
-                                       theme_cfg.get("timezone"))
-    text = render.compose(header=header, system=system_lines, art=art_lines, notice=notice, news=news_lines)
-    return Result(text, pick, p, depth, gl.name)
+                                       theme_cfg.get("timezone"), private=private)
+    text, sections = render.compose(header=header, system=system_lines, art=art_lines, notice=notice,
+                                    news=news_lines)
+    return Result(text, pick, p, depth, gl.name, sections, private)

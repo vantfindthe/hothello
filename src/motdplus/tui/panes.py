@@ -17,6 +17,7 @@ from textual.widget import Widget
 from textual.widgets import Button, DataTable, Input, Label, Select, SelectionList, Static, Switch, Tree
 
 from .. import hooks, themes
+from ..animate import SPEEDS, STYLES as ANIMATIONS
 from ..config import CHANGE_MODES, CYCLE_MODES, FRAMES, PREFER_MODES, SIZE_PRESETS
 from ..feeds import PRESETS, enabled_feeds, fetch_feed
 from ..store import ArtFilter
@@ -294,7 +295,20 @@ class DisplayPane(VerticalScroll):
                 yield field("When no cached art fits", Select(
                     [("Crop the closest fit", "crop"), ("Skip the art", "skip")],
                     value=d["oversize"], allow_blank=False, id="d-oversize"))
-                yield switch_row("Show title and artist credit", Switch(d["credit"], id="d-credit"))
+                yield switch_row("Show the art's name", Switch(d["title"], id="d-title"))
+                yield switch_row("Show the source (artist and link)", Switch(d["credit"], id="d-credit"))
+        a = self.app.cfg["animation"]
+        with Horizontal(classes="columns"):
+            with Vertical(classes="column"):
+                yield field("Login animation", Select([(f"{k} - {v}", k) for k, v in ANIMATIONS.items()],
+                                                      value=a["style"], allow_blank=False, id="a-style"))
+            with Vertical(classes="column"):
+                with Horizontal(classes="inline"):
+                    yield Select([(f"{k} speed", k) for k in SPEEDS], value=a["speed"], allow_blank=False,
+                                 id="a-speed")
+                    yield Select([("animate everything", "all"), ("animate the art only", "art")],
+                                 value=a["target"], allow_blank=False, id="a-target")
+                yield Button("Play it  (a)", id="a-play")
         yield Static(id="size-info", classes="stats")
 
     def refresh_view(self) -> None:
@@ -315,14 +329,23 @@ class DisplayPane(VerticalScroll):
     def on_resize(self) -> None:
         self.refresh_view()
 
-    @on(Select.Changed)
+    @on(Select.Changed, "#d-size, #d-frame, #d-align, #d-oversize")
     def _select(self, event: Select.Changed) -> None:
         self.app.cfg["display"][(event.select.id or "")[2:]] = event.value
         self.app.save_config()
 
-    @on(Switch.Changed, "#d-credit")
+    @on(Select.Changed, "#a-style, #a-speed, #a-target")
+    def _animation(self, event: Select.Changed) -> None:
+        self.app.cfg["animation"][(event.select.id or "")[2:]] = event.value
+        self.app.save_config()
+
+    @on(Button.Pressed, "#a-play")
+    def _play(self) -> None:
+        self.app.action_play()
+
+    @on(Switch.Changed, "#d-credit, #d-title")
     def _credit(self, event: Switch.Changed) -> None:
-        self.app.cfg["display"]["credit"] = event.value
+        self.app.cfg["display"][(event.switch.id or "")[2:]] = event.value
         self.app.save_config()
 
     @on(Input.Changed)
@@ -502,8 +525,25 @@ class SystemPane(VerticalScroll):
         if os.name != "nt":
             yield switch_row("Hide the system's plain login message (~/.hushlogin), so this themed version "
                              "replaces it instead of repeating it", Switch(hooks.hushlogin_enabled(), id="hush"))
+        p = self.app.cfg["privacy"]
+        yield Label("Privacy mode (for screen recordings)", classes="field-label")
+        yield switch_row("Hide user and host names, IP addresses, last-login address, OS and kernel versions, "
+                         "uptime, memory/disk totals and patch status", Switch(p["enabled"], id="p-enabled"))
+        with Horizontal(classes="inline"):
+            yield Label("Call me", classes="inline-label narrow")
+            yield Input(p["alias"], id="p-alias", classes="name")
         yield Static("Press [b]p[/b] to preview.  On short screens the grid is dropped before the art, "
                      "but alerts such as 'restart required' stay.", classes="hint")
+
+    @on(Switch.Changed, "#p-enabled")
+    def _privacy(self, event: Switch.Changed) -> None:
+        self.app.cfg["privacy"]["enabled"] = event.value
+        self.app.save_config()
+
+    @on(Input.Changed, "#p-alias")
+    def _alias(self, event: Input.Changed) -> None:
+        self.app.cfg["privacy"]["alias"] = event.value
+        self.app.save_config()
 
     @on(Switch.Changed, "#s-enabled, #s-alerts, #s-last_login, #s-bars")
     def _switch(self, event: Switch.Changed) -> None:
@@ -554,6 +594,7 @@ class ThemePane(Horizontal):
                                                                     allow_blank=False, id="t-glyphs"))
             yield field("Colour depth", Select(COLOR_CHOICES, value=t["color"], allow_blank=False, id="t-color"))
             yield field("Art colouring", Select(ART_STYLES, value=t["art_style"], allow_blank=False, id="t-art_style"))
+            yield switch_row("Show the header bar", Switch(t["header"], id="t-header"))
             yield Label("Header segments", classes="field-label")
             yield SelectionList(*[(label, key, key in t["segments"]) for key, label in SEGMENT_CHOICES.items()],
                                 id="t-segments")
@@ -592,6 +633,11 @@ class ThemePane(Horizontal):
     @on(Select.Changed)
     def _select(self, event: Select.Changed) -> None:
         self.app.cfg["theme"][(event.select.id or "")[2:]] = event.value
+        self.app.save_config()
+
+    @on(Switch.Changed, "#t-header")
+    def _header(self, event: Switch.Changed) -> None:
+        self.app.cfg["theme"]["header"] = event.value
         self.app.save_config()
 
     @on(SelectionList.SelectedChanged, "#t-segments")

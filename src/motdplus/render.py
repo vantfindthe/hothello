@@ -106,10 +106,11 @@ def art_block(pick: Pick, theme: Theme, art_style: str, glyphs: Glyphs, painter:
         frame = "ascii"
     chars = FRAME_CHARS.get(frame)
     sep = " - " if glyphs.name == "ascii" else " · "
-    title = art.title or "untitled"
+    title_on = display.get("title", True)
+    credit_on = display.get("credit", True)
+    title = (art.title or "untitled") if title_on else ""
     url = art_url(art.id)
     short_url = url.split("://", 1)[1]
-    credit_on = display.get("credit", True)
     frame_c, title_c, muted_c = parse_color(theme.frame), parse_color(theme.title), parse_color(theme.muted)
 
     if chars:
@@ -120,7 +121,7 @@ def art_block(pick: Pick, theme: Theme, art_style: str, glyphs: Glyphs, painter:
         inner = max(w + 2, min(wanted, cols - 2))
         block_w = inner + 2
         pad = " " * max((cols - block_w) // 2, 0) if display.get("align") == "center" else ""
-        top_label = truncate(title, inner - 4, glyphs.ellipsis) if inner >= 7 else ""
+        top_label = truncate(title, inner - 4, glyphs.ellipsis) if title and inner >= 7 else ""
         if top_label:
             top = (painter.paint(tl + hz + " ", frame_c) + painter.paint(top_label, title_c, bold=True)
                    + painter.paint(" " + hz * (inner - 3 - cell_width(top_label)) + tr, frame_c))
@@ -146,11 +147,17 @@ def art_block(pick: Pick, theme: Theme, art_style: str, glyphs: Glyphs, painter:
     center = display.get("align") == "center"
     pad_n = max((cols - w) // 2, 0) if center else 0
     out = [" " * pad_n + line for line in body]
-    if credit_on:
+    if title_on or credit_on:
         by = f" by {art.artist}" if art.artist else ""
-        credit = truncate(f"{title}{by}{sep}{short_url}", cols, glyphs.ellipsis)
+        if title and credit_on:
+            text = f"{title}{by}{sep}{short_url}"
+        elif title:
+            text = title
+        else:
+            text = f"{art.artist}{sep}{short_url}" if art.artist else short_url
+        credit = truncate(text, cols, glyphs.ellipsis)
         credit_pad = max((cols - cell_width(credit)) // 2, 0) if center else 0
-        out.append(" " * credit_pad + hyperlink(painter.paint(credit, muted_c), url, links))
+        out.append(" " * credit_pad + hyperlink(painter.paint(credit, muted_c), url if credit_on else "", links))
     return out
 
 
@@ -204,8 +211,11 @@ def _heading(label_key: str, label: str, theme: Theme, glyphs: Glyphs, painter: 
 
 
 def system_block(info, system_cfg: dict, theme: Theme, glyphs: Glyphs, painter: Painter, cols: int,
-                 tz: str | None = None) -> list[str]:
-    """Ubuntu-login-message-style facts as a themed grid, plus alert lines."""
+                 tz: str | None = None, private: bool = False) -> list[str]:
+    """Ubuntu-login-message-style facts as a themed grid, plus alert lines.
+
+    Privacy mode keeps only harmless percentages and counts: no addresses, no
+    last-login source, no hardware totals and no patch / restart status."""
     from .sysinfo import local_time
     from .sysstat import ITEMS, human
 
@@ -224,12 +234,12 @@ def system_block(info, system_cfg: dict, theme: Theme, glyphs: Glyphs, painter: 
             used, total = getattr(info, key)
             pct = used / total * 100 if total else 0.0
             cells.append((key, {"disk": "Disk /", "memory": "Memory", "swap": "Swap"}[key],
-                          f"{pct:.0f}% of {human(total)}", pct))
+                          f"{pct:.0f}%" if private else f"{pct:.0f}% of {human(total)}", pct))
         elif key == "processes" and info.processes is not None:
             cells.append(("processes", "Processes", str(info.processes), None))
         elif key == "users" and info.users is not None:
             cells.append(("users", "Users", str(info.users), None))
-        elif key == "network":
+        elif key == "network" and not private:
             cells += [("network", iface, addr, None) for iface, addr in info.addresses]
 
     lines: list[str] = []
@@ -275,7 +285,7 @@ def system_block(info, system_cfg: dict, theme: Theme, glyphs: Glyphs, painter: 
 
     alerts: list[tuple[str, str, object]] = []
     sep = " - " if glyphs.name == "ascii" else " · "
-    if system_cfg.get("alerts", True):
+    if system_cfg.get("alerts", True) and not private:
         if info.updates:
             msg = f"{info.updates} updates can be applied"
             if info.security:
@@ -296,7 +306,7 @@ def system_block(info, system_cfg: dict, theme: Theme, glyphs: Glyphs, painter: 
         icon = glyphs.icon(icon_key) or bullet
         lines.append("  " + painter.paint(truncate(f"{icon} {msg}", cols - 2, glyphs.ellipsis), color,
                                           bold=icon_key == "restart"))
-    if system_cfg.get("last_login", True) and info.last_login:
+    if system_cfg.get("last_login", True) and info.last_login and not private:
         import time as _time
 
         when, host = info.last_login
@@ -309,16 +319,22 @@ def system_block(info, system_cfg: dict, theme: Theme, glyphs: Glyphs, painter: 
     return [_heading("system", "System", theme, glyphs, painter, cols)] + lines
 
 
-def compose(*, header: str, system: list[str], art: list[str], notice: list[str], news: list[str]) -> str:
-    sections = [s for s in (system, art or notice, news) if s]
+def compose(*, header: str, system: list[str], art: list[str], notice: list[str],
+            news: list[str]) -> tuple[str, dict[str, tuple[int, int]]]:
+    """-> (text, {section: (first line, end line)}); animations use the ranges."""
     lines: list[str] = []
+    where: dict[str, tuple[int, int]] = {}
     if header:
+        where["header"] = (0, 1)
         lines += [header, ""]
-    for i, section in enumerate(sections):
-        if i:
+    for name, section in (("system", system), ("art", art or notice), ("news", news)):
+        if not section:
+            continue
+        if len(lines) > (2 if header else 0):
             lines.append("")
+        where[name] = (len(lines), len(lines) + len(section))
         lines += section
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n", where
 
 
 BANNER = r"""

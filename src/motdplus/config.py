@@ -61,7 +61,8 @@ DEFAULTS: dict = {
         "reserve_rows": 2,  # rows left free for the prompt
         "align": "center",
         "frame": "rounded",
-        "credit": True,
+        "title": True,  # the art's name (frame title / credit line)
+        "credit": True,  # the art's source: artist and asciiart.website link
         "oversize": "crop",  # crop | skip - what to do when nothing cached fits
     },
     "news": {
@@ -83,8 +84,20 @@ DEFAULTS: dict = {
         "last_login": True,
         "bars": True,
     },
+    "privacy": {
+        # For screen recordings: hide the user and host names, IP addresses, last-login
+        # address, OS/kernel versions, uptime, hardware totals and patch status.
+        "enabled": False,
+        "alias": "friend",  # shown instead of your user name
+    },
+    "animation": {
+        "style": "none",  # none | lines | slide | wipe | rain | decode | nuke | random
+        "speed": "normal",  # fast | normal | slow
+        "target": "all",  # all | art - what the effect reveals; the rest appears at once
+    },
     "theme": {
         "name": "tokyo-night",
+        "header": True,
         "glyphs": "auto",  # auto | nerd | powerline | unicode | ascii
         "color": "auto",  # auto | truecolor | 256 | 16 | none
         "art_style": "theme",  # theme | plain | solid | gradient | rainbow

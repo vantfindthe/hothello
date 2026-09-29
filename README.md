@@ -25,13 +25,13 @@ Then open the settings UI:
 | Tab | What you control |
 |---|---|
 | **Art** | Which of the ~630 categories to cycle (space checks a category or a whole group; nothing checked = all), shuffle / rotate / random, every login / hourly / daily, prefer bigger pieces, hide flagged content, fetch more now |
-| **Display** | Screen size: fit the terminal, fit width only, or fixed presets (40x12 for phones up to 200x60), custom size, smallest art worth showing, rows kept for your prompt, frame style, alignment, crop-or-skip when nothing fits |
+| **Display** | Screen size: fit the terminal, fit width only, or fixed presets (40x12 for phones up to 200x60), custom size, smallest art worth showing, rows kept for your prompt, frame style, alignment, crop-or-skip when nothing fits, art name / source on or off, **login animation** (style, speed, all or art only) |
 | **News** | 37 built-in feeds (BBC, NPR, Guardian, NYT, Al Jazeera, DW, PBS, Economist, Ars Technica, Nature, NASA ...), your own RSS/Atom feeds (checked before they're added), how many headlines, per-source cap, max age, refresh interval, clickable OSC 8 links |
-| **System** | A themed version of Ubuntu's login message: load, disk / memory / swap with usage bars, processes, users, IP addresses, pending updates, *restart required*, new-release notice and last login. Includes the `~/.hushlogin` switch that hides the plain system version so it isn't shown twice |
+| **System** | A themed version of Ubuntu's login message: load, disk / memory / swap with usage bars, processes, users, IP addresses, pending updates, *restart required*, new-release notice and last login. Includes the `~/.hushlogin` switch that hides the plain system version so it isn't shown twice, and **privacy mode** for screen recordings |
 | **Theme** | 12 themes (Tokyo Night, Catppuccin, Dracula, Gruvbox, Nord, Solarized, Synthwave, Matrix, Amber CRT ...), glyph set (Nerd Font / Powerline / Unicode / ASCII), colour depth (truecolor / 256 / 16 / none), art colouring (gradient, rainbow ...), header segments (incl. kernel), greeting, date format, timezone, **import an oh-my-posh theme** |
 | **Install** | Login hooks for bash, zsh, fish and PowerShell, and the system-wide `/etc/update-motd.d` hook |
 
-Keys: `p` full-screen preview at your real terminal size · `n` next art · `f` fetch art and news · `q` quit.
+Keys: `p` full-screen preview at your real terminal size · `a` play the animation · `n` next art · `f` fetch art and news · `q` quit.
 
 ## How it works
 
@@ -51,16 +51,46 @@ Keys: `p` full-screen preview at your real terminal size · `n` next art · `f` 
 
 ## Commands
 
+Everything in the settings UI can also be done from the command line. Commands that take a choice list the
+options with a small live example when you leave the choice off, and accept any unique prefix
+(`motdplus theme gruv`).
+
 ```
-motdplus               settings UI
-motdplus show          print the MOTD (what the hook runs)
-motdplus preview       show the next MOTD without using it up
-motdplus refresh       fetch art and headlines now (--art, --news, --catalog)
-motdplus status        paths, cache size, feed health, hook status
-motdplus themes        list themes; --import-omp [NAME|PATH] [--use]
-motdplus categories    list categories (optionally filtered)
-motdplus install / uninstall [--target bash|zsh|fish|pwsh|powershell|update-motd] [--hushlogin]
+motdplus                         settings UI (also: motdplus config)
+motdplus show | preview          print the MOTD; preview doesn't use up the art
+                                 --private, --animate STYLE, --no-animate, --width/--height, --color, --glyphs
+
+motdplus features                every feature and whether it's on
+motdplus on|off|toggle NAME ...  show / hide features:  art headlines system header title credit frame
+                                 badges ages links bars alerts lastlogin network privacy animation color
+                                 flagged hushlogin   (e.g.  motdplus off headlines credit)
+
+motdplus privacy [on|off]        for screen recordings: hides user and host names, IP addresses, the
+                                 last-login address, OS/kernel versions, uptime, memory/disk totals and
+                                 patch status  (--alias NAME; one session: MOTDPLUS_PRIVACY=1)
+
+motdplus theme [NAME]            themes with examples     (--import-omp [NAME|PATH] for oh-my-posh)
+motdplus font [NAME]             glyph sets / fonts with examples: nerd, powerline, unicode, ascii
+motdplus color [MODE]            colour depth with examples: truecolor, 256, 16, none
+motdplus frame [STYLE]           frames with examples
+motdplus size [NAME|WxH]         screen size presets, or a custom size like 100x30
+motdplus cycle [MODE]            shuffle | rotate | random  --every login|hourly|daily  --prefer any|large
+motdplus categories [SEARCH]     --add / --remove / --only NAME|GROUP|ID ...   --clear   --selected
+motdplus feeds                   --add ID|URL  --remove ID|URL  --name NAME
+motdplus headlines               --count N  --per-source N  --max-age HOURS
+motdplus animation [STYLE]       none lines slide wipe rain decode nuke random   --speed  --target all|art
+                                 --try plays one now without saving it
+motdplus greeting [TEXT]         e.g.  motdplus greeting 'Hey {user}, {greeting}!'
+motdplus get [KEY] | set KEY VALUE | reset [SECTION] --yes
+
+motdplus refresh                 fetch art and headlines now (--art, --news, --catalog)
+motdplus status                  paths, cache size, feed health, hook status
+motdplus install | uninstall     [--target bash|zsh|fish|pwsh|powershell|update-motd] [--hushlogin]
 ```
+
+Animations run only when the output is a terminal, never delay a login by more than a couple of seconds,
+and any key skips them. They redraw only the characters that change, so they stay light over SSH, and the
+real text is printed over the last frame so scrollback and links are intact.
 
 Config: `~/.config/motdplus/config.json` (user themes in `themes/`). Cache: `~/.cache/motdplus/motdplus.db`.
 

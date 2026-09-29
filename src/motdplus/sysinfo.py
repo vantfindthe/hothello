@@ -114,21 +114,33 @@ def local_time(now: float, tz: str | None) -> time.struct_time:
     return time.localtime(now)
 
 
-def segments(theme_cfg: dict, *, now: float, shell: str | None = None,
-             category: str | None = None) -> list[tuple[str, str]]:
-    """-> [(icon key, text)] for the configured header segments, in order."""
+PRIVATE_SEGMENTS = {"host", "kernel", "uptime"}  # dropped entirely in privacy mode
+_FAMILY = {"windows": "Windows", "mac": "macOS", "linux": "Linux", "os": "Unix"}
+
+
+def segments(theme_cfg: dict, *, now: float, shell: str | None = None, category: str | None = None,
+             private: bool = False, alias: str = "friend") -> list[tuple[str, str]]:
+    """-> [(icon key, text)] for the configured header segments, in order.
+
+    In privacy mode the user name becomes `alias`, the OS loses its version and
+    host / kernel / uptime are left out, so a screen recording gives nothing away."""
     lt = local_time(now, theme_cfg.get("timezone"))
     try:
         stamp = time.strftime(theme_cfg.get("date_format") or "%a %d %b %H:%M", lt)
     except ValueError:
         stamp = time.strftime("%a %d %b %H:%M", lt)
     values = {
-        "user": user(), "host": host(), "os": os_name(), "greeting": greeting(lt.tm_hour),
+        "user": alias if private else user(),
+        "host": "this machine" if private else host(),
+        "os": _FAMILY[os_family()] if private else os_name(),
+        "greeting": greeting(lt.tm_hour),
         "date": time.strftime("%Y-%m-%d", lt), "time": time.strftime("%H:%M", lt),
         "weekday": time.strftime("%A", lt),
     }
     out: list[tuple[str, str]] = []
     for name in theme_cfg.get("segments", []):
+        if private and name in PRIVATE_SEGMENTS:
+            continue
         if name == "greeting":
             text = fill(theme_cfg.get("greeting") or "{greeting}, {user}", values)
             out.append(("day" if 6 <= lt.tm_hour < 18 else "night", text))

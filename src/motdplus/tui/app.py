@@ -52,6 +52,7 @@ class MotdPlusApp(App):
     BINDINGS = [
         Binding("p", "preview", "Preview"),
         Binding("n", "next_art", "Next art"),
+        Binding("a", "play", "Play animation"),
         Binding("f", "fetch", "Fetch art + news"),
         Binding("q", "quit", "Quit"),
     ]
@@ -82,7 +83,9 @@ class MotdPlusApp(App):
     # -- shared helpers used by the panes --------------------------------------
 
     def save_config(self) -> None:
-        config.save(self.cfg)
+        # Widgets announce their initial values while mounting; only write real changes.
+        if self.cfg != config.load():
+            config.save(self.cfg)
         self.settings_changed()
 
     def settings_changed(self) -> None:
@@ -110,6 +113,33 @@ class MotdPlusApp(App):
     def action_next_art(self) -> None:
         self.preview_art_id = None
         self.settings_changed()
+
+    def action_play(self) -> None:
+        """Leave the UI for a moment and play the login animation full-screen."""
+        import sys
+
+        from .. import animate, term, themes
+
+        style = self.cfg["animation"]["style"]
+        if style == "none":
+            self.notify("Pick an animation first (Display tab, or: motdplus animation STYLE)", severity="warning")
+            return
+        color = self.cfg["theme"].get("color", "auto")
+        res = motd.build(self.cfg, self.store, measured=(self.size.width, self.size.height), dry_run=True,
+                         prefer_id=self.preview_art_id, color=term.detect_color() if color == "auto" else color)
+        try:
+            with self.suspend():
+                sys.stdout.write("\x1b[2J\x1b[H")
+                animate.play(res.text, style=style, speed=self.cfg["animation"]["speed"], width=res.plan.usable,
+                             term_rows=self.size.height, painter=themes.Painter(res.color),
+                             ascii_only=res.glyphs == "ascii", focus=res.sections.get("art"),
+                             only=res.sections.get("art") if self.cfg["animation"]["target"] == "art" else None)
+                try:
+                    input("\npress Enter to return ")
+                except EOFError:
+                    pass
+        except Exception as e:  # e.g. SuspendNotSupported when not in a real terminal
+            self.notify(f"Can't play here: {e}", severity="warning")
 
     def action_fetch(self) -> None:
         self.fetch(art=True, news=True)
