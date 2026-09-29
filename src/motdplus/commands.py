@@ -20,10 +20,11 @@ from .textutil import visible_width
 
 
 def _out(text: str = "") -> None:
-    try:
-        sys.stdout.reconfigure(errors="replace")  # type: ignore[union-attr]
-    except (AttributeError, ValueError):
-        pass
+    if getattr(sys.stdout, "errors", "replace") != "replace":
+        try:
+            sys.stdout.reconfigure(errors="replace")  # type: ignore[union-attr]
+        except (AttributeError, ValueError):
+            pass
     print(text)
 
 

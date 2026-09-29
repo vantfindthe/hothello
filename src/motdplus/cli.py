@@ -380,4 +380,10 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     if not getattr(args, "func", None):
         return cmd_tui(args)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except BrokenPipeError:
+        # Output piped into something that stopped reading (`motd categories | head`):
+        # finish quietly instead of printing a traceback.
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        return 0

@@ -84,6 +84,13 @@ def test_show_cli_runs(capsys):
     assert "No art cached yet" in out
 
 
+def test_closed_pipe_is_not_an_error():
+    proc = subprocess.run(f"{sys.executable} -m motdplus features | head -1", shell=True,
+                          capture_output=True, text=True)
+    assert proc.stdout.startswith("Features")
+    assert "Traceback" not in proc.stderr and "BrokenPipe" not in proc.stderr
+
+
 def test_module_entry_point():
     out = subprocess.run([sys.executable, "-m", "motdplus", "--version"], capture_output=True, text=True)
     assert out.stdout.startswith("motdplus ")
