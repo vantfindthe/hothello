@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "motdplus"
+version = "0.1.0"
+description = "A different piece of ASCII art from asciiart.website, plus news headlines, at every login."
+readme = "README.md"
+requires-python = ">=3.10"
+# The login path (`motdplus show`) is stdlib-only; Textual powers the settings UI.
+dependencies = ["textual>=1.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+motdplus = "motdplus.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+motdplus = ["tui/*.tcss"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

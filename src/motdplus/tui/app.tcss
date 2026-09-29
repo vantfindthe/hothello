@@ -1,0 +1,211 @@
+TabbedContent {
+    height: 1fr;
+}
+
+TabPane {
+    padding: 0 1;
+}
+
+.field {
+    height: auto;
+    margin-bottom: 1;
+}
+
+.field-label {
+    color: $accent;
+    text-style: bold;
+    margin-top: 1;
+}
+
+.hint {
+    color: $text-muted;
+    height: auto;
+}
+
+.stats {
+    height: auto;
+    margin: 1 0;
+    padding: 0 1;
+    border: round $primary 40%;
+}
+
+.intro {
+    margin: 1 0;
+}
+
+.switch-row {
+    height: auto;
+    margin-top: 1;
+}
+
+.switch-label {
+    width: 1fr;
+    padding: 1 1 0 1;
+}
+
+.buttons {
+    height: auto;
+    margin-top: 1;
+}
+
+.buttons Button {
+    margin-right: 1;
+    min-width: 10;
+}
+
+.inline {
+    height: auto;
+    margin-top: 1;
+}
+
+.inline-label {
+    width: 30;
+    padding: 1 1 0 0;
+}
+
+.inline-label.narrow {
+    width: auto;
+    padding: 1 1 0 1;
+}
+
+.inline-x {
+    padding: 1 1 0 1;
+}
+
+Input.short {
+    width: 10;
+}
+
+Input.name {
+    width: 24;
+}
+
+.side {
+    width: 46;
+    padding: 0 0 0 2;
+}
+
+.side.wide {
+    width: 1fr;
+}
+
+.side Button {
+    width: 100%;
+    margin-top: 1;
+}
+
+.side .buttons Button {
+    width: auto;
+}
+
+/* Art tab */
+#cat-col {
+    width: 1fr;
+}
+
+#cat-tree {
+    height: 1fr;
+    border: round $primary 50%;
+}
+
+#cat-filter {
+    margin-top: 1;
+}
+
+#cat-summary {
+    margin-bottom: 1;
+}
+
+/* Display tab */
+.columns {
+    height: auto;
+}
+
+.column {
+    width: 1fr;
+    height: auto;
+    padding-right: 2;
+}
+
+/* News tab */
+#presets-col {
+    width: 1fr;
+}
+
+#n-presets {
+    height: 1fr;
+    border: round $primary 50%;
+}
+
+#n-custom {
+    height: auto;
+    max-height: 10;
+    min-height: 4;
+}
+
+#n-url {
+    width: 1fr;
+}
+
+/* System tab */
+#s-items {
+    height: auto;
+    max-height: 10;
+    border: round $primary 50%;
+}
+
+/* Theme tab */
+#theme-left {
+    width: 44;
+    padding-right: 1;
+}
+
+#t-segments {
+    height: auto;
+    max-height: 10;
+}
+
+#t-omp {
+    width: 1fr;
+}
+
+#theme-right {
+    width: 1fr;
+    padding-left: 1;
+}
+
+#theme-preview {
+    height: 1fr;
+    width: 1fr;
+    border: round $accent 60%;
+    overflow: hidden;
+}
+
+/* Install tab */
+.hook-row {
+    height: auto;
+    margin-top: 1;
+}
+
+.hook-label {
+    width: 50;
+    padding: 1 1 0 0;
+}
+
+.hook-state {
+    width: 16;
+    padding: 1 1 0 0;
+}
+
+.hook-row Button {
+    margin-right: 1;
+}
+
+/* Full-screen preview */
+PreviewScreen {
+    background: $background;
+}
+
+#preview-full {
+    height: 1fr;
+}
