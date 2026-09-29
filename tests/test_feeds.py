@@ -1,4 +1,4 @@
-from motdplus.feeds import Feed, enabled_feeds, parse_date, parse_feed, select_headlines
+from hothello.feeds import Feed, enabled_feeds, parse_date, parse_feed, select_headlines
 
 RSS = b"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel><title>Example News</title>

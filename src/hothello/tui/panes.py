@@ -680,7 +680,7 @@ class ThemePane(Horizontal):
 class InstallPane(VerticalScroll):
     def compose(self) -> ComposeResult:
         yield Static(
-            "motd+ runs [b]motdplus show[/b] from your shell's startup file, so a new piece of art "
+            "hothello runs [b]hothello show[/b] from your shell's startup file, so a new piece of art "
             "(and the headlines) greets every interactive login.  New art and news are fetched in the "
             "background, so logging in never waits on the network.",
             classes="intro",
@@ -704,13 +704,13 @@ class InstallPane(VerticalScroll):
             state.update("[green]installed[/green]" if installed else "[dim]not installed[/dim]")
             self.query_one(f"#hi-{key}", Button).display = not installed and (not target.system or is_root)
             self.query_one(f"#hr-{key}", Button).display = installed and (not target.system or is_root)
-        lines = [f"Hook runs: [b]{sys.executable} -m motdplus show[/b]"]
+        lines = [f"Hook runs: [b]{sys.executable} -m hothello show[/b]"]
         if "update-motd" in hooks.targets() and not is_root:
             lines.append(
                 "System-wide MOTD for every user (needs root):\n"
-                f"  sudo {sys.executable} -m motdplus install --target update-motd"
+                f"  sudo {sys.executable} -m hothello install --target update-motd"
             )
-        lines.append("Other commands:  motdplus preview · motdplus refresh · motdplus status · motdplus uninstall")
+        lines.append("Other commands:  hothello preview · hothello refresh · hothello status · hothello uninstall")
         self.query_one("#install-info", Static).update("\n\n".join(lines))
 
     @on(Button.Pressed)

@@ -5,8 +5,8 @@ import time
 import pytest
 from conftest import make_art
 
-from motdplus import animate, cli, config, motd, sysinfo, themes
-from motdplus.textutil import strip_ansi
+from hothello import animate, cli, config, motd, sysinfo, themes
+from hothello.textutil import strip_ansi
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def test_privacy_hides_identifying_details(filled, cfg, monkeypatch):
         assert secret not in private.text, secret
     assert "streamer" in private.text
     assert not re.search(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", private.text)
-    monkeypatch.setenv("MOTDPLUS_PRIVACY", "1")
+    monkeypatch.setenv("HOTHELLO_PRIVACY", "1")
     assert motd.build(cfg, filled, cols=120, rows=60, color="none", dry_run=True, measured=None).private
 
 

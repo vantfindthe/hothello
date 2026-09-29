@@ -1,4 +1,4 @@
-from motdplus.scraper import clean_art, parse_artworks, parse_catalog
+from hothello.scraper import clean_art, parse_artworks, parse_catalog
 
 BROWSE = """
 <div class="tree"><ul>

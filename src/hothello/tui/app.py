@@ -45,8 +45,8 @@ class PreviewScreen(ModalScreen):
         self.draw()
 
 
-class MotdPlusApp(App):
-    TITLE = "motd+"
+class HothelloApp(App):
+    TITLE = "hothello"
     SUB_TITLE = "your login greeting"
     CSS_PATH = "app.tcss"
     BINDINGS = [
@@ -122,7 +122,7 @@ class MotdPlusApp(App):
 
         style = self.cfg["animation"]["style"]
         if style == "none":
-            self.notify("Pick an animation first (Display tab, or: motdplus animation STYLE)", severity="warning")
+            self.notify("Pick an animation first (Display tab, or: hothello animation STYLE)", severity="warning")
             return
         color = self.cfg["theme"].get("color", "auto")
         res = motd.build(self.cfg, self.store, measured=(self.size.width, self.size.height), dry_run=True,

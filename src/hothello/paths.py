@@ -1,6 +1,6 @@
 """Filesystem locations.
 
-Setting MOTDPLUS_HOME puts config and cache in one directory, which is what
+Setting HOTHELLO_HOME puts config and cache in one directory, which is what
 tests and the system-wide update-motd.d install use.
 """
 
@@ -10,11 +10,11 @@ import os
 import sys
 from pathlib import Path
 
-APP = "motdplus"
+APP = "hothello"
 
 
 def _override() -> Path | None:
-    value = os.environ.get("MOTDPLUS_HOME")
+    value = os.environ.get("HOTHELLO_HOME")
     return Path(value).expanduser() if value else None
 
 
@@ -45,7 +45,7 @@ def themes_dir() -> Path:
 
 
 def db_file() -> Path:
-    return cache_dir() / "motdplus.db"
+    return cache_dir() / "hothello.db"
 
 
 def lock_file() -> Path:

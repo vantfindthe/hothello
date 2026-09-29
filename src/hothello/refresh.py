@@ -202,8 +202,8 @@ def python_for_background() -> str:
 
 
 def spawn_background() -> None:
-    """Start `motdplus refresh --if-due` fully detached from this terminal."""
-    cmd = [python_for_background(), "-m", "motdplus", "refresh", "--if-due", "--quiet"]
+    """Start `hothello refresh --if-due` fully detached from this terminal."""
+    cmd = [python_for_background(), "-m", "hothello", "refresh", "--if-due", "--quiet"]
     kwargs: dict = dict(stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
     if os.name == "nt":
         kwargs["creationflags"] = (
@@ -211,7 +211,7 @@ def spawn_background() -> None:
         )
     else:
         kwargs["start_new_session"] = True
-    # Make sure the child can import motdplus even when it isn't installed site-wide.
+    # Make sure the child can import hothello even when it isn't installed site-wide.
     env = dict(os.environ)
     pkg_root = str(Path(__file__).resolve().parent.parent)
     env["PYTHONPATH"] = pkg_root + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")

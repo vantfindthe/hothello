@@ -338,19 +338,21 @@ def compose(*, header: str, system: list[str], art: list[str], notice: list[str]
 
 
 BANNER = r"""
- __  __  ___ _____ ___    _
-|  \/  |/ _ \_   _|   \ _| |_
-| |\/| | (_) || | | |) |_   _|
-|_|  |_|\___/ |_| |___/  |_|
+ _          _    _          _  _
+| |_   ___ | |_ | |_   ___ | || | ___
+| ' \ / _ \|  _|| ' \ / -_)| || |/ _ \
+|_||_|\___/ \__||_||_|\___||_||_|\___/
 """.strip("\n")
 
 
 def first_run_notice(painter: Painter, theme: Theme, glyphs: Glyphs, cols: int) -> list[str]:
-    note = "No art cached yet - fetching some in the background (or run: motdplus refresh)"
+    note = "No art cached yet - fetching some in the background (or run: hothello refresh)"
     out = []
-    if cols >= 32:
-        color_at = art_color_fn(theme.art_style, theme.art_colors, theme.art_direction, 30, 4)
-        out += [_colorize(line, y, color_at, painter, parse_color(theme.text)) for y, line in enumerate(BANNER.split("\n"))]
+    lines = BANNER.split("\n")
+    width = max(cell_width(line) for line in lines)
+    if cols >= width:
+        color_at = art_color_fn(theme.art_style, theme.art_colors, theme.art_direction, width, len(lines))
+        out += [_colorize(line, y, color_at, painter, parse_color(theme.text)) for y, line in enumerate(lines)]
         out.append("")
     out.append(painter.paint(truncate(note, cols, glyphs.ellipsis), parse_color(theme.muted)))
     return out

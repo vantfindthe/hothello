@@ -8,7 +8,7 @@ import zlib
 
 from . import __version__
 
-USER_AGENT = f"motdplus/{__version__} (terminal greeting; low-volume personal use)"
+USER_AGENT = f"hothello/{__version__} (terminal greeting; low-volume personal use)"
 
 
 class FetchError(Exception):

@@ -1,4 +1,4 @@
-# motd+
+# hothello
 
 A different piece of ASCII art at every login, picked from
 [Christopher Johnson's ASCII Art Collection](https://asciiart.website/browse.php),
@@ -7,17 +7,17 @@ with news headlines underneath and an oh-my-posh-style header, all fitted to you
 ## Install
 
 ```bash
-cd ~/motd-plus
+cd ~/hothello
 python3 -m venv .venv            # on Ubuntu without python3-venv: python3 -m venv --without-pip .venv
                                  #   && curl -sSL https://bootstrap.pypa.io/get-pip.py | .venv/bin/python
 .venv/bin/pip install -e .
-.venv/bin/motdplus install       # adds the login hook and downloads a first batch of art + news
+.venv/bin/hothello install       # adds the login hook and downloads a first batch of art + news
 ```
 
 Then open the settings UI:
 
 ```bash
-.venv/bin/motdplus
+.venv/bin/hothello
 ```
 
 ## The settings UI
@@ -35,11 +35,11 @@ Keys: `p` full-screen preview at your real terminal size · `a` play the animati
 
 ## How it works
 
-* **At login** the hook runs `motdplus show`: stdlib only, reads the local SQLite cache, prints, and exits
+* **At login** the hook runs `hothello show`: stdlib only, reads the local SQLite cache, prints, and exits
   (about 60 ms). It never touches the network, and it never fails your login: errors are swallowed
-  (set `MOTDPLUS_DEBUG=1` to see them). It only runs in interactive shells, so `ssh host cmd`, scp and
+  (set `HOTHELLO_DEBUG=1` to see them). It only runs in interactive shells, so `ssh host cmd`, scp and
   deploy scripts are unaffected.
-* **In the background** it starts `motdplus refresh --if-due` (detached) when news is older than the refresh
+* **In the background** it starts `hothello refresh --if-due` (detached) when news is older than the refresh
   interval, when the unseen pool of fitting art runs low, or when you pick categories that were never fetched.
 * **Art source**: public `cat.php` pages, each of which serves 20 random pieces of a category, fetched a few
   pages at a time with a pause between requests and an honest User-Agent. The cache grows gradually;
@@ -53,54 +53,54 @@ Keys: `p` full-screen preview at your real terminal size · `a` play the animati
 
 Everything in the settings UI can also be done from the command line. Commands that take a choice list the
 options with a small live example when you leave the choice off, and accept any unique prefix
-(`motdplus theme gruv`).
+(`hothello theme gruv`).
 
 ```
-motdplus                         settings UI (also: motdplus config)
-motdplus show | preview          print the MOTD; preview doesn't use up the art
+hothello                         settings UI (also: hothello config)
+hothello show | preview          print the MOTD; preview doesn't use up the art
                                  --private, --animate STYLE, --no-animate, --width/--height, --color, --glyphs
 
-motdplus features                every feature and whether it's on
-motdplus on|off|toggle NAME ...  show / hide features:  art headlines system header title credit frame
+hothello features                every feature and whether it's on
+hothello on|off|toggle NAME ...  show / hide features:  art headlines system header title credit frame
                                  badges ages links bars alerts lastlogin network privacy animation color
-                                 flagged hushlogin   (e.g.  motdplus off headlines credit)
+                                 flagged hushlogin   (e.g.  hothello off headlines credit)
 
-motdplus privacy [on|off]        for screen recordings: hides user and host names, IP addresses, the
+hothello privacy [on|off]        for screen recordings: hides user and host names, IP addresses, the
                                  last-login address, OS/kernel versions, uptime, memory/disk totals and
-                                 patch status  (--alias NAME; one session: MOTDPLUS_PRIVACY=1)
+                                 patch status  (--alias NAME; one session: HOTHELLO_PRIVACY=1)
 
-motdplus theme [NAME]            themes with examples     (--import-omp [NAME|PATH] for oh-my-posh)
-motdplus font [NAME]             glyph sets / fonts with examples: nerd, powerline, unicode, ascii
-motdplus color [MODE]            colour depth with examples: truecolor, 256, 16, none
-motdplus frame [STYLE]           frames with examples
-motdplus size [NAME|WxH]         screen size presets, or a custom size like 100x30
-motdplus cycle [MODE]            shuffle | rotate | random  --every login|hourly|daily  --prefer any|large
-motdplus categories [SEARCH]     --add / --remove / --only NAME|GROUP|ID ...   --clear   --selected
-motdplus feeds                   --add ID|URL  --remove ID|URL  --name NAME
-motdplus headlines               --count N  --per-source N  --max-age HOURS
-motdplus animation [STYLE]       none lines slide wipe rain decode nuke random   --speed  --target all|art
+hothello theme [NAME]            themes with examples     (--import-omp [NAME|PATH] for oh-my-posh)
+hothello font [NAME]             glyph sets / fonts with examples: nerd, powerline, unicode, ascii
+hothello color [MODE]            colour depth with examples: truecolor, 256, 16, none
+hothello frame [STYLE]           frames with examples
+hothello size [NAME|WxH]         screen size presets, or a custom size like 100x30
+hothello cycle [MODE]            shuffle | rotate | random  --every login|hourly|daily  --prefer any|large
+hothello categories [SEARCH]     --add / --remove / --only NAME|GROUP|ID ...   --clear   --selected
+hothello feeds                   --add ID|URL  --remove ID|URL  --name NAME
+hothello headlines               --count N  --per-source N  --max-age HOURS
+hothello animation [STYLE]       none lines slide wipe rain decode nuke random   --speed  --target all|art
                                  --try plays one now without saving it
-motdplus greeting [TEXT]         e.g.  motdplus greeting 'Hey {user}, {greeting}!'
-motdplus get [KEY] | set KEY VALUE | reset [SECTION] --yes
+hothello greeting [TEXT]         e.g.  hothello greeting 'Hey {user}, {greeting}!'
+hothello get [KEY] | set KEY VALUE | reset [SECTION] --yes
 
-motdplus refresh                 fetch art and headlines now (--art, --news, --catalog)
-motdplus status                  paths, cache size, feed health, hook status
-motdplus install | uninstall     [--target bash|zsh|fish|pwsh|powershell|update-motd] [--hushlogin]
+hothello refresh                 fetch art and headlines now (--art, --news, --catalog)
+hothello status                  paths, cache size, feed health, hook status
+hothello install | uninstall     [--target bash|zsh|fish|pwsh|powershell|update-motd] [--hushlogin]
 ```
 
 Animations run only when the output is a terminal, never delay a login by more than a couple of seconds,
 and any key skips them. They redraw only the characters that change, so they stay light over SSH, and the
 real text is printed over the last frame so scrollback and links are intact.
 
-Config: `~/.config/motdplus/config.json` (user themes in `themes/`). Cache: `~/.cache/motdplus/motdplus.db`.
+Config: `~/.config/hothello/config.json` (user themes in `themes/`). Cache: `~/.cache/hothello/hothello.db`.
 
 ## System-wide (every user, via pam_motd)
 
 ```bash
-sudo ~/motd-plus/.venv/bin/python -m motdplus install --target update-motd
+sudo ~/hothello/.venv/bin/python -m hothello install --target update-motd
 ```
 
-This copies your config to `/var/lib/motdplus` and adds `/etc/update-motd.d/60-motdplus`. pam_motd has no
+This copies your config to `/var/lib/hothello` and adds `/etc/update-motd.d/60-hothello`. pam_motd has no
 terminal to measure, so choose a fixed size (e.g. Classic 80x24) in the Display tab first.
 
 ## Tests

@@ -4,9 +4,9 @@ import time
 import pytest
 from conftest import make_art
 
-from motdplus import motd, themes
-from motdplus.render import hyperlink
-from motdplus.textutil import strip_ansi, visible_width
+from hothello import motd, themes
+from hothello.render import hyperlink
+from hothello.textutil import strip_ansi, visible_width
 
 
 @pytest.fixture

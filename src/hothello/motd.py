@@ -84,8 +84,8 @@ def current_headlines(cfg: dict, store: Store, now: float) -> list[Headline]:
 
 
 def is_private(cfg: dict) -> bool:
-    """Privacy mode: the config switch, or MOTDPLUS_PRIVACY=1 for a single session."""
-    env = os.environ.get("MOTDPLUS_PRIVACY", "").strip().lower()
+    """Privacy mode: the config switch, or HOTHELLO_PRIVACY=1 for a single session."""
+    env = os.environ.get("HOTHELLO_PRIVACY", "").strip().lower()
     if env in ("1", "on", "yes", "true"):
         return True
     if env in ("0", "off", "no", "false"):

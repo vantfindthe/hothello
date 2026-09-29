@@ -1,4 +1,4 @@
-"""Installing / removing the login hook that runs `motdplus show`.
+"""Installing / removing the login hook that runs `hothello show`.
 
 Hooks live between marker lines, so installing twice is harmless and
 uninstalling removes exactly what was added.
@@ -14,10 +14,10 @@ from pathlib import Path
 
 from . import paths
 
-BEGIN = "# >>> motdplus >>>"
-END = "# <<< motdplus <<<"
-UPDATE_MOTD = Path("/etc/update-motd.d/60-motdplus")
-SYSTEM_HOME = "/var/lib/motdplus"
+BEGIN = "# >>> hothello >>>"
+END = "# <<< hothello <<<"
+UPDATE_MOTD = Path("/etc/update-motd.d/60-hothello")
+SYSTEM_HOME = "/var/lib/hothello"
 
 
 def documents_dir() -> Path:
@@ -63,7 +63,7 @@ def targets() -> dict[str, Target]:
     else:
         out["bash"] = Target("bash", "bash (~/.bashrc)", home / ".bashrc")
         out["zsh"] = Target("zsh", "zsh (~/.zshrc)", home / ".zshrc")
-        out["fish"] = Target("fish", "fish (conf.d)", home / ".config" / "fish" / "conf.d" / "motdplus.fish", whole_file=True)
+        out["fish"] = Target("fish", "fish (conf.d)", home / ".config" / "fish" / "conf.d" / "hothello.fish", whole_file=True)
         out["pwsh"] = Target("pwsh", "PowerShell 7+", home / ".config" / "powershell" / "profile.ps1")
         if sys.platform.startswith("linux"):
             out["update-motd"] = Target("update-motd", "System MOTD (/etc/update-motd.d, all users, needs root)",
@@ -109,33 +109,33 @@ def snippet(key: str, python: str) -> str:
         # Only interactive sessions: skip -NonInteractive, and -Command/-File runs
         # unless -NoExit keeps them open (as VS Code's terminal does).
         return "\n".join([
-            BEGIN + "  (managed by `motdplus install`; remove with `motdplus uninstall`)",
-            "$motdplusArgs = [Environment]::GetCommandLineArgs()",
-            "if (-not $env:MOTDPLUS_SHOWN -and [Environment]::UserInteractive -and",
-            "    -not ($motdplusArgs -match '^[-/]noni') -and",
-            "    (($motdplusArgs -match '^[-/]noe') -or",
-            "     -not ($motdplusArgs -match '^[-/](c|command|f|file|e|ec|encodedcommand|cwa|commandwithargs)$'))) {",
-            "    $env:MOTDPLUS_SHOWN = '1'",
-            "    $motdplusSaved = $env:PYTHONPATH",
+            BEGIN + "  (managed by `hothello install`; remove with `hothello uninstall`)",
+            "$hothelloArgs = [Environment]::GetCommandLineArgs()",
+            "if (-not $env:HOTHELLO_SHOWN -and [Environment]::UserInteractive -and",
+            "    -not ($hothelloArgs -match '^[-/]noni') -and",
+            "    (($hothelloArgs -match '^[-/]noe') -or",
+            "     -not ($hothelloArgs -match '^[-/](c|command|f|file|e|ec|encodedcommand|cwa|commandwithargs)$'))) {",
+            "    $env:HOTHELLO_SHOWN = '1'",
+            "    $hothelloSaved = $env:PYTHONPATH",
             f"    $env:PYTHONPATH = {_q_ps(root)}",
-            f"    try {{ & {_q_ps(python)} -m motdplus show --shell {key} }} catch {{ }}",
-            "    finally { $env:PYTHONPATH = $motdplusSaved }",
-            "    Remove-Variable motdplusSaved",
+            f"    try {{ & {_q_ps(python)} -m hothello show --shell {key} }} catch {{ }}",
+            "    finally { $env:PYTHONPATH = $hothelloSaved }",
+            "    Remove-Variable hothelloSaved",
             "}",
-            "Remove-Variable motdplusArgs",
+            "Remove-Variable hothelloArgs",
             END,
         ])
     if key == "bash":
-        cond = '[[ $- == *i* && -z "$MOTDPLUS_SHOWN" ]]'
+        cond = '[[ $- == *i* && -z "$HOTHELLO_SHOWN" ]]'
     elif key == "zsh":
-        cond = '[[ -o interactive && -z "$MOTDPLUS_SHOWN" ]]'
+        cond = '[[ -o interactive && -z "$HOTHELLO_SHOWN" ]]'
     elif key == "fish":
         return "\n".join([
             BEGIN,
-            "if status is-interactive; and not set -q MOTDPLUS_SHOWN",
-            "    set -gx MOTDPLUS_SHOWN 1",
-            "    set -g fish_greeting ''  # motdplus replaces the default greeting",
-            f"    env PYTHONPATH={_q_sh(root)} {_q_sh(python)} -m motdplus show --shell fish 2>/dev/null",
+            "if status is-interactive; and not set -q HOTHELLO_SHOWN",
+            "    set -gx HOTHELLO_SHOWN 1",
+            "    set -g fish_greeting ''  # hothello replaces the default greeting",
+            f"    env PYTHONPATH={_q_sh(root)} {_q_sh(python)} -m hothello show --shell fish 2>/dev/null",
             "end",
             END,
         ])
@@ -145,7 +145,7 @@ def snippet(key: str, python: str) -> str:
             BEGIN,
             "# Runs at every login via pam_motd.  Config and cache live in " + SYSTEM_HOME + ";",
             "# there is no terminal to measure here, so set a size in the config (Display tab).",
-            f"MOTDPLUS_HOME={SYSTEM_HOME} PYTHONPATH={_q_sh(root)} exec {_q_sh(python)} -m motdplus show --shell login 2>/dev/null",
+            f"HOTHELLO_HOME={SYSTEM_HOME} PYTHONPATH={_q_sh(root)} exec {_q_sh(python)} -m hothello show --shell login 2>/dev/null",
             END,
         ])
     else:
@@ -153,8 +153,8 @@ def snippet(key: str, python: str) -> str:
     return "\n".join([
         BEGIN,
         f"if {cond}; then",
-        "  export MOTDPLUS_SHOWN=1",
-        f"  PYTHONPATH={_q_sh(root)} {_q_sh(python)} -m motdplus show --shell {key} 2>/dev/null",
+        "  export HOTHELLO_SHOWN=1",
+        f"  PYTHONPATH={_q_sh(root)} {_q_sh(python)} -m hothello show --shell {key} 2>/dev/null",
         "fi",
         END,
     ])
@@ -220,7 +220,7 @@ def uninstall(target: Target) -> str:
         if is_installed(target):
             target.path.unlink()
             return f"removed {target.path}"
-        return f"{target.path} was not written by motdplus; left alone"
+        return f"{target.path} was not written by hothello; left alone"
     text, encoding = _read(target.path)
     if BEGIN not in text:
         return f"no hook in {target.path}"
@@ -246,8 +246,8 @@ def seed_system_home() -> None:
 
 
 # ~/.hushlogin makes sshd and login(1) skip the system MOTD and "Last login" line,
-# so only motdplus greets you.  Only files motdplus created are ever removed.
-HUSH_MARK = "# created by motdplus\n"
+# so only hothello greets you.  Only files hothello created are ever removed.
+HUSH_MARK = "# created by hothello\n"
 
 
 def hushlogin_path() -> Path:
@@ -268,6 +268,6 @@ def set_hushlogin(on: bool) -> str:
     if not path.exists():
         return f"{path} does not exist"
     if path.read_text(encoding="utf-8", errors="replace") != HUSH_MARK:
-        return f"{path} was not created by motdplus; left alone"
+        return f"{path} was not created by hothello; left alone"
     path.unlink()
     return f"removed {path}: the system login message is back"

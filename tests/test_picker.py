@@ -2,7 +2,7 @@ import time
 
 from conftest import make_art
 
-from motdplus.picker import crop, pick
+from hothello.picker import crop, pick
 
 
 def add(store, *pieces):
@@ -28,7 +28,7 @@ def test_dry_run_records_nothing(store, cfg):
     add(store, make_art(1, 10, 5))
     for _ in range(3):
         pick(store, cfg["art"], cfg["display"], max_width=50, max_height=20, dry_run=True)
-    assert store.count(__import__("motdplus.store").store.ArtFilter(), unseen=True) == 1
+    assert store.count(__import__("hothello.store").store.ArtFilter(), unseen=True) == 1
     assert store.kv_get("current") is None
 
 

@@ -2,8 +2,8 @@ import json
 import subprocess
 import sys
 
-from motdplus import cli, hooks, themes
-from motdplus.hooks import BEGIN, END, Target
+from hothello import cli, hooks, themes
+from hothello.hooks import BEGIN, END, Target
 
 
 def test_install_is_idempotent_and_reversible(tmp_path):
@@ -69,7 +69,7 @@ def test_import_omp_from_file(tmp_path):
 
 
 def test_show_never_raises(monkeypatch, capsys):
-    import motdplus.motd as m
+    import hothello.motd as m
 
     def boom(*a, **k):
         raise RuntimeError("kaboom")
@@ -85,12 +85,12 @@ def test_show_cli_runs(capsys):
 
 
 def test_closed_pipe_is_not_an_error():
-    proc = subprocess.run(f"{sys.executable} -m motdplus features | head -1", shell=True,
+    proc = subprocess.run(f"{sys.executable} -m hothello features | head -1", shell=True,
                           capture_output=True, text=True)
     assert proc.stdout.startswith("Features")
     assert "Traceback" not in proc.stderr and "BrokenPipe" not in proc.stderr
 
 
 def test_module_entry_point():
-    out = subprocess.run([sys.executable, "-m", "motdplus", "--version"], capture_output=True, text=True)
-    assert out.stdout.startswith("motdplus ")
+    out = subprocess.run([sys.executable, "-m", "hothello", "--version"], capture_output=True, text=True)
+    assert out.stdout.startswith("hothello ")

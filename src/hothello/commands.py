@@ -45,7 +45,7 @@ def _mark(active: bool) -> str:
 def _saved(cfg: dict, message: str) -> int:
     config.save(cfg)
     _out(message)
-    _out("  (see it with: motdplus preview)")
+    _out("  (see it with: hothello preview)")
     return 0
 
 
@@ -138,7 +138,7 @@ FEATURE_NAMES = {name: f for f in FEATURES for name in (f.name, *f.aliases)}
 
 def cmd_features(args) -> int:
     cfg = config.load()
-    _out("Features (turn them with: motdplus on|off|toggle NAME ...)\n")
+    _out("Features (turn them with: hothello on|off|toggle NAME ...)\n")
     for f in FEATURES:
         state = "on " if f.get(cfg) else "off"
         alias = f"  [{', '.join(f.aliases[:3])}]" if f.aliases else ""
@@ -152,7 +152,7 @@ def cmd_switch(args) -> int:
     for name in args.features:
         feature = FEATURE_NAMES.get(name.lower())
         if feature is None:
-            _out(f"unknown feature {name!r}; see: motdplus features")
+            _out(f"unknown feature {name!r}; see: hothello features")
             status = 1
             continue
         value = (not feature.get(cfg)) if args.mode == "toggle" else args.mode == "on"
@@ -166,7 +166,7 @@ def cmd_switch(args) -> int:
             _out("          uptime, memory/disk totals, pending updates and restart status")
     config.save(cfg)
     if status == 0:
-        _out("  (see it with: motdplus preview)")
+        _out("  (see it with: hothello preview)")
     return status
 
 
@@ -182,7 +182,7 @@ def cmd_privacy(args) -> int:
     _out(f"privacy mode: {'on' if p['enabled'] else 'off'}   (your name shows as {p['alias']!r})")
     _out("  hides: user name, host name, IP addresses, last-login address, OS and kernel versions,")
     _out("         uptime, memory/disk totals, pending updates and restart status")
-    _out("  one session only: MOTDPLUS_PRIVACY=1 motdplus preview   ·   or: motdplus preview --private")
+    _out("  one session only: HOTHELLO_PRIVACY=1 hothello preview   ·   or: hothello preview --private")
     return 0
 
 
@@ -200,7 +200,7 @@ def cmd_theme(args) -> int:
     if args.import_omp is not None:
         source = args.import_omp or themes.detect_omp_config()
         if not source:
-            _out("couldn't find your oh-my-posh config; pass a name or path: motdplus theme --import-omp PATH")
+            _out("couldn't find your oh-my-posh config; pass a name or path: hothello theme --import-omp PATH")
             return 1
         theme = themes.import_omp(source)
         _out(f"imported {source!r} as theme {theme.key!r}")
@@ -216,13 +216,13 @@ def cmd_theme(args) -> int:
     glyphs = themes.resolve_glyphs(cfg["theme"]["glyphs"])
     painter = _painter(cfg)
     items = [("user", "you"), ("host", "box"), ("datetime", "09:41")]
-    _out("Themes (set with: motdplus theme NAME)\n")
+    _out("Themes (set with: hothello theme NAME)\n")
     for key, theme in available.items():
         head = render.header_line(items, theme, glyphs, painter, 36)
         pad = " " * max(36 - visible_width(head), 0)
         _out(f" {_mark(key == cfg['theme']['name'])} {key:<18} {head}{pad}  {_swatch(theme, glyphs, painter)}"
              f"  {theme.name if theme.source == 'built-in' else 'yours: ' + theme.name}")
-    _out("\n  also: motdplus theme --import-omp [NAME|PATH]   (copy an oh-my-posh theme's colours)")
+    _out("\n  also: hothello theme --import-omp [NAME|PATH]   (copy an oh-my-posh theme's colours)")
     return 0
 
 
@@ -247,7 +247,7 @@ def cmd_font(args) -> int:
     theme = themes.get_theme(cfg["theme"]["name"])
     current = cfg["theme"]["glyphs"]
     detected = themes.resolve_glyphs("auto").name
-    _out("Fonts / glyph sets (set with: motdplus font NAME)")
+    _out("Fonts / glyph sets (set with: hothello font NAME)")
     _out("If the example shows boxes or question marks, your terminal font lacks those glyphs.\n")
     items = [("user", "you"), ("host", "box"), ("uptime", "up 3d")]
     for key, text in FONT_HELP.items():
@@ -283,7 +283,7 @@ def cmd_color(args) -> int:
 
     theme = themes.get_theme(cfg["theme"]["name"])
     glyphs = themes.resolve_glyphs(cfg["theme"]["glyphs"])
-    _out("Colour depth (set with: motdplus color MODE)\n")
+    _out("Colour depth (set with: hothello color MODE)\n")
     for key, text in COLOR_HELP.items():
         depth = term.detect_color() if key == "auto" else key
         painter = themes.Painter(depth if sys.stdout.isatty() else "none")
@@ -315,7 +315,7 @@ def cmd_frame(args) -> int:
         else:
             box = ["   fish   ", " ><(((*>  ", "          "]
         boxes.append((f"{_mark(key == cfg['display']['frame'])}{key}", box))
-    _out("Frames (set with: motdplus frame STYLE)\n")
+    _out("Frames (set with: hothello frame STYLE)\n")
     _out("  " + "".join(name.ljust(13) for name, _ in boxes))
     for row in range(3):
         _out("  " + "".join(box[row] + "   " for _, box in boxes))
@@ -341,7 +341,7 @@ def cmd_size(args) -> int:
         return _saved(cfg, f"size: {key} ({SIZE_PRESETS[key][0]})")
     measured = term.measure()
     cols, rows = resolve_size(d, measured)
-    _out("Screen size (set with: motdplus size NAME  or  motdplus size 100x30)\n")
+    _out("Screen size (set with: hothello size NAME  or  hothello size 100x30)\n")
     for key, (label, _, _) in SIZE_PRESETS.items():
         extra = f"  -> {d['width']}x{d['height']}" if key == "custom" else ""
         _out(f" {_mark(key == d['size'])} {key:<11} {label}{extra}")
@@ -370,7 +370,7 @@ def cmd_cycle(args) -> int:
         changed.append(f"size preference: {args.prefer}")
     if changed:
         return _saved(cfg, "\n".join(changed))
-    _out("Art cycling (set with: motdplus cycle MODE [--every login|hourly|daily] [--prefer any|large])\n")
+    _out("Art cycling (set with: hothello cycle MODE [--every login|hourly|daily] [--prefer any|large])\n")
     for key, text in CYCLE_MODES.items():
         _out(f" {_mark(key == art['cycle'])} {key:<8} {text}")
     _out("")
@@ -454,7 +454,7 @@ def cmd_categories(args) -> int:
         _out(f"[{'x' if c['id'] in selected else ' '}] {c['id']:>4}  {group} / {c['name']}"
              f"  ({c['cached']}/{c['count'] or '?'} cached)")
     if not rows:
-        _out("no categories match" if store.groupings() else "no category list yet: run motdplus refresh")
+        _out("no categories match" if store.groupings() else "no category list yet: run hothello refresh")
     _out(f"\n{'every category' if not selected else f'{len(selected)} selected'} · "
          "change with --add / --remove / --only NAME|GROUP|ID ...  or --clear")
     return 0
@@ -491,8 +491,8 @@ def cmd_feeds(args) -> int:
             news["feeds"] = [f for f in news["feeds"] if f != item]
             news["custom"] = [f for f in news["custom"] if f["url"] != item and f.get("name") != item]
             _out(f"removed {item}")
-        return _saved(cfg, "feeds updated; fetch now with: motdplus refresh --news")
-    _out("News feeds (change with: motdplus feeds --add ID|URL --remove ID|URL)\n")
+        return _saved(cfg, "feeds updated; fetch now with: hothello refresh --news")
+    _out("News feeds (change with: hothello feeds --add ID|URL --remove ID|URL)\n")
     group = None
     for p in PRESETS:
         if p.group != group:
@@ -520,7 +520,7 @@ def cmd_headlines(args) -> int:
     _out(f"headlines: {'on' if news['enabled'] else 'off'} · {news['count']} shown · at most "
          f"{news['per_source']} per source · hidden after {news['max_age_hours']}h · refreshed every "
          f"{news['refresh_minutes']} min")
-    _out("  change with: motdplus headlines --count N --per-source N --max-age HOURS ·  motdplus off headlines")
+    _out("  change with: hothello headlines --count N --per-source N --max-age HOURS ·  hothello off headlines")
     return 0
 
 
@@ -549,11 +549,11 @@ def cmd_animation(args) -> int:
         _out("\n".join(changed))
         if args.try_it:
             return play_now(cfg, anim["style"], anim["speed"], anim["target"])
-        _out("  (watch it with: motdplus preview)")
+        _out("  (watch it with: hothello preview)")
         return 0
     if args.try_it:
         return play_now(cfg, anim["style"], anim["speed"], anim["target"])
-    _out("Login animations (set with: motdplus animation STYLE; try one without saving: --try)\n")
+    _out("Login animations (set with: hothello animation STYLE; try one without saving: --try)\n")
     for key, text in ANIMATIONS.items():
         _out(f" {_mark(key == anim['style'])} {key:<8} {text}")
     _out(f"\n  speed: {anim['speed']} ({' / '.join(SPEEDS)})  ·  animates: {anim['target']} (all / art)")
@@ -599,7 +599,7 @@ def cmd_get(args) -> int:
     try:
         node, leaf = _walk(cfg, args.key)
     except KeyError:
-        _out(f"no setting called {args.key!r}; see: motdplus get")
+        _out(f"no setting called {args.key!r}; see: hothello get")
         return 1
     _out(json.dumps(node[leaf], indent=2))
     return 0
@@ -610,7 +610,7 @@ def cmd_set(args) -> int:
     try:
         node, leaf = _walk(cfg, args.key)
     except KeyError:
-        _out(f"no setting called {args.key!r}; see: motdplus get")
+        _out(f"no setting called {args.key!r}; see: hothello get")
         return 1
     raw = " ".join(args.value)
     try:
@@ -654,6 +654,6 @@ def cmd_greeting(args) -> int:
     _out(f"greeting: {cfg['theme']['greeting']}")
     _out("  fields: {greeting} {user} {host} {os} {date} {time} {weekday}")
     _out(f"  header segments: {', '.join(cfg['theme']['segments'])}  (choices: {', '.join(SEGMENT_CHOICES)})")
-    _out("  change with: motdplus greeting 'Hi {user}!'   ·   motdplus set theme.segments '[\"greeting\", \"datetime\"]'")
+    _out("  change with: hothello greeting 'Hi {user}!'   ·   hothello set theme.segments '[\"greeting\", \"datetime\"]'")
     return 0
 

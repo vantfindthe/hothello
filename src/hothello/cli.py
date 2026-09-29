@@ -1,4 +1,4 @@
-"""Command line: `motdplus` opens the settings UI; subcommands do everything else."""
+"""Command line: `hothello` opens the settings UI; subcommands do everything else."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def cmd_show(args) -> int:
             _prepare_stdout()
             anim = cfg["animation"]
             style = args.animate or anim.get("style", "none")
-            if args.no_animate or os.environ.get("MOTDPLUS_NO_ANIMATION"):
+            if args.no_animate or os.environ.get("HOTHELLO_NO_ANIMATION"):
                 style = "none"
             measured = term.measure()
             art_lines = res.sections.get("art")
@@ -62,7 +62,7 @@ def cmd_show(args) -> int:
                     or refresh.news_due(cfg, store, now)):
                 refresh.spawn_background()
     except Exception:
-        if os.environ.get("MOTDPLUS_DEBUG"):
+        if os.environ.get("HOTHELLO_DEBUG"):
             raise
     return 0
 
@@ -115,11 +115,11 @@ def cmd_install(args) -> int:
             continue
         if target.system:
             if os.geteuid() != 0:  # type: ignore[attr-defined]
-                print(f"{target.label}: needs root. Run:\n  sudo {sys.executable} -m motdplus install --target {key}")
+                print(f"{target.label}: needs root. Run:\n  sudo {sys.executable} -m hothello install --target {key}")
                 status = 1
                 continue
             hooks.seed_system_home()
-            os.environ["MOTDPLUS_HOME"] = hooks.SYSTEM_HOME
+            os.environ["HOTHELLO_HOME"] = hooks.SYSTEM_HOME
         print(f"{target.label}: {hooks.install(target, args.python)}")
     if args.hushlogin:
         print(hooks.set_hushlogin(True))
@@ -139,7 +139,7 @@ def cmd_uninstall(args) -> int:
     available = hooks.targets()
     keys = args.target or [k for k, t in available.items() if hooks.is_installed(t)]
     if not keys:
-        print("no motdplus hooks are installed")
+        print("no hothello hooks are installed")
     for key in keys:
         if target := available.get(key):
             print(f"{target.label}: {hooks.uninstall(target)}")
@@ -163,7 +163,7 @@ def cmd_status(args) -> int:
 
     cfg = config.load()
     store = _store()
-    print(f"motdplus {__version__}   python {sys.executable}")
+    print(f"hothello {__version__}   python {sys.executable}")
     print(f"config  {paths.config_file()}")
     print(f"cache   {paths.db_file()}")
     print()
@@ -211,7 +211,7 @@ OVERVIEW = """\
 commands:
   show / preview            print the MOTD (preview doesn't use up the art)
   features                  list features;  on / off / toggle FEATURE ...  to show or hide them
-                            e.g.  motdplus off headlines credit   ·   motdplus on privacy
+                            e.g.  hothello off headlines credit   ·   hothello on privacy
   privacy [on|off]          hide names, addresses and versions (for screen recordings)
   theme [NAME]              list themes with examples, or pick one  (--import-omp for oh-my-posh)
   font [NAME]               list glyph sets / fonts with examples, or pick one
@@ -233,10 +233,10 @@ def main(argv: list[str] | None = None) -> int:
     from . import commands as c
 
     p = argparse.ArgumentParser(
-        prog="motdplus", description="A fresh piece of ASCII art, the news and your system at every login.",
+        prog="hothello", description="A fresh piece of ASCII art, the news and your system at every login.",
         epilog=OVERVIEW, formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--version", action="version", version=f"motdplus {__version__}")
+    p.add_argument("--version", action="version", version=f"hothello {__version__}")
     sub = p.add_subparsers(dest="cmd", metavar="COMMAND")
 
     def display_flags(sp, preview: bool) -> None:
@@ -267,7 +267,7 @@ def main(argv: list[str] | None = None) -> int:
                        ("toggle", "flip features")):
         s = sub.add_parser(mode, help=text, aliases=({"on": ["enable", "unhide"], "off": ["disable", "hide"]}
                                                      .get(mode, [])))
-        s.add_argument("features", nargs="+", metavar="FEATURE", help="see: motdplus features")
+        s.add_argument("features", nargs="+", metavar="FEATURE", help="see: hothello features")
         s.set_defaults(func=c.cmd_switch, mode=mode)
 
     s = sub.add_parser("privacy", help="privacy mode for screen recordings", aliases=["private"])
@@ -341,7 +341,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("key", nargs="?")
     s.set_defaults(func=c.cmd_get)
 
-    s = sub.add_parser("set", help="change any setting: motdplus set display.width 100")
+    s = sub.add_parser("set", help="change any setting: hothello set display.width 100")
     s.add_argument("key")
     s.add_argument("value", nargs="+")
     s.set_defaults(func=c.cmd_set)

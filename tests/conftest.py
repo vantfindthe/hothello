@@ -1,15 +1,15 @@
 import pytest
 
-from motdplus import config
-from motdplus.store import Art, Store
+from hothello import config
+from hothello.store import Art, Store
 
 
 @pytest.fixture(autouse=True)
 def isolated_home(tmp_path, monkeypatch):
     """Every test gets its own config/cache directory and a plain environment."""
-    monkeypatch.setenv("MOTDPLUS_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("HOTHELLO_HOME", str(tmp_path / "home"))
     monkeypatch.setenv("HOME", str(tmp_path / "user"))
-    for var in ("NO_COLOR", "COLORTERM", "WT_SESSION", "TERM_PROGRAM", "POSH_THEME", "MOTDPLUS_SHOWN"):
+    for var in ("NO_COLOR", "COLORTERM", "WT_SESSION", "TERM_PROGRAM", "POSH_THEME", "HOTHELLO_SHOWN"):
         monkeypatch.delenv(var, raising=False)
     (tmp_path / "user").mkdir()
     return tmp_path

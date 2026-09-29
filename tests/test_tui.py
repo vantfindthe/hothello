@@ -7,9 +7,9 @@ pytest.importorskip("textual")
 
 from textual.widgets import Input, Select, Switch, TabbedContent  # noqa: E402
 
-from motdplus import config  # noqa: E402
-from motdplus.tui.app import MotdPlusApp, PreviewScreen  # noqa: E402
-from motdplus.tui.panes import CategoryTree  # noqa: E402
+from hothello import config  # noqa: E402
+from hothello.tui.app import HothelloApp, PreviewScreen  # noqa: E402
+from hothello.tui.panes import CategoryTree  # noqa: E402
 
 
 def run(coro):
@@ -20,7 +20,7 @@ def test_settings_round_trip(store):
     store.upsert_art([make_art(1, 20, 6, categories=[(1, "Cats")]), make_art(2, 20, 6, categories=[(3, "Cars")])])
 
     async def scenario():
-        app = MotdPlusApp()
+        app = HothelloApp()
         async with app.run_test(size=(140, 44)) as pilot:
             await pilot.pause()
             tree = app.query_one(CategoryTree)

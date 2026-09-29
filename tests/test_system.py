@@ -1,6 +1,6 @@
-from motdplus import render, sysstat, themes
-from motdplus.sysstat import UTMP_RECORD, SysInfo, parse_meminfo, parse_updates, read_utmp
-from motdplus.textutil import visible_width
+from hothello import render, sysstat, themes
+from hothello.sysstat import UTMP_RECORD, SysInfo, parse_meminfo, parse_updates, read_utmp
+from hothello.textutil import visible_width
 
 UPDATES = """
 Expanded Security Maintenance for Applications is not enabled.
