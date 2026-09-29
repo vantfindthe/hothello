@@ -226,6 +226,25 @@ def system_block(info, system_cfg: dict, theme: Theme, glyphs: Glyphs, painter: 
     muted, text_c, accent = parse_color(theme.muted), parse_color(theme.text), parse_color(theme.accent)
     ok, crit = parse_color(theme.title), parse_color("bright_red")
 
+    if system_cfg.get("compact"):  # very short screens: just the alerts, on one line
+        if private or not system_cfg.get("alerts", True):
+            return []
+        bits = []
+        if info.restart:
+            bits.append((glyphs.icon("restart"), "restart required", crit, True))
+        if info.updates:
+            bits.append((glyphs.icon("updates"), f"{info.updates} updates", accent, False))
+        if info.release:
+            bits.append((glyphs.icon("release"), "new release", accent, False))
+        out, used = [], 0
+        for icon, text, color, bold in bits:
+            piece = f"{icon} {text}" if icon else text
+            if used + cell_width(piece) + (2 if out else 0) > cols:
+                break
+            out.append(painter.paint(piece, color, bold=bold))
+            used += cell_width(piece) + (2 if len(out) > 1 else 0)
+        return ["  ".join(out)] if out else []
+
     cells: list[tuple[str, str, str, float | None]] = []  # icon key, label, value, percent
     for key in items:
         if key == "load" and info.load:

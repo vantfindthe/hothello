@@ -86,6 +86,21 @@ def test_nothing_to_say_means_no_section():
     assert render.system_block(SysInfo(), empty, theme, themes.GLYPH_SETS["ascii"], themes.Painter("none"), 80) == []
 
 
+def test_tiny_screens_keep_the_art_and_one_alert_line(store, cfg, monkeypatch):
+    from conftest import make_art
+
+    from hothello import motd
+    from hothello.textutil import strip_ansi
+
+    monkeypatch.setattr(sysstat, "gather", lambda c: INFO)
+    store.upsert_art([make_art(1, 20, 4)])
+    res = motd.build(cfg, store, cols=40, rows=13, color="truecolor", glyphs="unicode", dry_run=True, measured=None)
+    text = strip_ansi(res.text)
+    assert res.pick.art is not None
+    assert "restart required" in text and "System" not in text  # folded into one line
+    assert len(text.rstrip("\n").split("\n")) + cfg["display"]["reserve_rows"] <= 13
+
+
 def test_gather_on_this_machine_does_not_raise():
     info = sysstat.gather(CFG)
     assert isinstance(info, SysInfo)

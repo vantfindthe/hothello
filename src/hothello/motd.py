@@ -124,14 +124,17 @@ def plan(cfg: dict, store: Store, *, measured: tuple[int, int] | None, cols: int
         news_rows = len(headlines) + 2 if headlines else 0
         return rows - header_rows - sys_rows - news_rows - art_rows - reserve
 
-    # On short screens the art gets room first: drop headlines, then the system grid
-    # (its alerts, like "restart required", stay).
+    # On short screens the art gets room first: drop headlines, then the system grid,
+    # then fold what's left into one alert line ("restart required" always survives).
     if cfg["art"].get("enabled", True):
         target = max(int(display.get("min_height", 4)), 6)
         while headlines and (room := art_room()) is not None and room < target:
             headlines.pop()
         if info is not None and (room := art_room()) is not None and room < target:
             system_cfg["items"] = []
+            sys_rows = system_rows()
+        if info is not None and (room := art_room()) is not None and room < target:
+            system_cfg["compact"] = True
             sys_rows = system_rows()
     return Plan(cols, rows, usable, usable - (4 if frame != "none" else 0), art_room(), headlines, info, system_cfg)
 
