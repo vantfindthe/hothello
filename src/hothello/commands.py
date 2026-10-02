@@ -102,6 +102,10 @@ def _network(c: dict, v: bool) -> None:
 
 FEATURES: list[Feature] = [
     Feature("art", "the ASCII art", *_flag("art", "enabled")),
+    Feature("picture", "ASCII art of the top headline's picture, instead of the collection",
+            lambda c: c["art"].get("source") == "news",
+            lambda c, v: c["art"].__setitem__("source", "news" if v else "collection"),
+            aliases=("pictures", "photo", "newsart")),
     Feature("headlines", "news headlines", *_flag("news", "enabled"), aliases=("news",)),
     Feature("system", "the System section (load, disk, memory, users ...)", *_flag("system", "enabled"),
             aliases=("sysinfo", "stats")),
@@ -521,6 +525,55 @@ def cmd_headlines(args) -> int:
          f"{news['per_source']} per source · hidden after {news['max_age_hours']}h · refreshed every "
          f"{news['refresh_minutes']} min")
     _out("  change with: hothello headlines --count N --per-source N --max-age HOURS ·  hothello off headlines")
+    return 0
+
+
+# -- news pictures --------------------------------------------------------------------------------------
+
+def cmd_picture(args) -> int:
+    import time
+
+    from .motd import current_headlines
+    from .newsart import COLORS, STYLES
+    from .store import Store
+
+    cfg = config.load()
+    art = cfg["art"]
+    changed = []
+    if args.state:
+        art["source"] = "news" if args.state == "on" else "collection"
+        changed.append(f"news picture: {args.state}")
+    if args.style:
+        art["picture_style"] = args.style
+        changed.append(f"style: {args.style} ({STYLES[args.style]})")
+    if args.color:
+        art["picture_color"] = args.color
+        changed.append(f"colours: {args.color} ({COLORS[args.color]})")
+    if args.width is not None:
+        art["picture_width"] = max(0, args.width)
+        changed.append(f"width: up to {art['picture_width'] or 'any number of'} columns")
+    if changed:
+        config.save(cfg)
+        _out("\n".join(changed))
+    on = art.get("source") == "news"
+    _out(f"news picture: {'on' if on else 'off'} · style {art['picture_style']} · colours {art['picture_color']}"
+         f" · up to {art['picture_width'] or 'any'} columns")
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        _out("  the background refresh needs Pillow to read pictures:  pip install pillow")
+    store = Store()
+    tops = current_headlines(cfg, store, time.time(), even_if_hidden=True)[:3]
+    for h in tops:
+        row = store.get_picture(h.link)
+        state = ("not fetched yet" if row is None else "ready" if row["pixels"] is not None
+                 else f"no picture ({row['error']})")
+        title = h.title if len(h.title) <= 60 else h.title[:59] + "…"
+        _out(f"  {h.badge:<9} {title}  -  {state}")
+    if on and tops and all(store.get_picture(h.link) is None for h in tops):
+        _out("  fetch them now with:  hothello refresh --news")
+    if not on:
+        _out("  turn it on with:  hothello picture on   (stories without a picture fall back to the collection)")
     return 0
 
 

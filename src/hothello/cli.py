@@ -207,6 +207,19 @@ def cmd_tui(args) -> int:
     return run()
 
 
+class _LazyCommands:
+    """`c.cmd_theme` etc. without importing the commands module at login: it is only
+    loaded when one of those commands actually runs."""
+
+    def __getattr__(self, name: str):
+        def run(args):
+            from . import commands
+
+            return getattr(commands, name)(args)
+
+        return run
+
+
 OVERVIEW = """\
 commands:
   show / preview            print the MOTD (preview doesn't use up the art)
@@ -221,6 +234,7 @@ commands:
   cycle [MODE]              how art is chosen (--every login|hourly|daily, --prefer any|large)
   categories [SEARCH]       list art categories; --add/--remove/--only NAME|GROUP|ID, --clear
   feeds                     news feeds; --add/--remove ID|URL
+  picture [on|off]          ASCII art of the top headline's picture (--style ascii|blocks, --color)
   headlines                 --count, --per-source, --max-age
   animation [STYLE]         login animations: lines, slide, wipe, rain, decode, nuke, random (--try)
   greeting [TEXT]           the greeting text
@@ -230,8 +244,10 @@ commands:
 
 
 def main(argv: list[str] | None = None) -> int:
-    from . import commands as c
+    from .animate import SPEEDS, STYLES as ANIMATIONS
+    from .config import CHANGE_MODES, PREFER_MODES
 
+    c = _LazyCommands()
     p = argparse.ArgumentParser(
         prog="hothello", description="A fresh piece of ASCII art, the news and your system at every login.",
         epilog=OVERVIEW, formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -245,7 +261,7 @@ def main(argv: list[str] | None = None) -> int:
         sp.add_argument("--color", choices=["truecolor", "256", "16", "none"])
         sp.add_argument("--glyphs", choices=["nerd", "powerline", "unicode", "ascii"])
         sp.add_argument("--private", action="store_true", help="privacy mode for this run")
-        sp.add_argument("--animate", choices=list(c.ANIMATIONS), help="animation for this run")
+        sp.add_argument("--animate", choices=list(ANIMATIONS), help="animation for this run")
         sp.add_argument("--no-animate", action="store_true", help="no animation this time")
         if preview:
             sp.set_defaults(func=cmd_show, dry_run=True, no_refresh=True, links=None, shell=None, output=None)
@@ -301,8 +317,8 @@ def main(argv: list[str] | None = None) -> int:
 
     s = sub.add_parser("cycle", help="how art is chosen and how often it changes")
     s.add_argument("mode", nargs="?", help="shuffle, rotate or random")
-    s.add_argument("--every", choices=list(c.CHANGE_MODES))
-    s.add_argument("--prefer", choices=list(c.PREFER_MODES))
+    s.add_argument("--every", choices=list(CHANGE_MODES))
+    s.add_argument("--prefer", choices=list(PREFER_MODES))
     s.set_defaults(func=c.cmd_cycle)
 
     s = sub.add_parser("categories", help="list art categories, or choose which to cycle", aliases=["category"])
@@ -326,9 +342,16 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--max-age", type=int, metavar="HOURS")
     s.set_defaults(func=c.cmd_headlines)
 
+    s = sub.add_parser("picture", help="ASCII art of the top headline's picture", aliases=["pictures"])
+    s.add_argument("state", nargs="?", choices=["on", "off"])
+    s.add_argument("--style", choices=["ascii", "blocks"], help="characters, or half-block pixels")
+    s.add_argument("--color", choices=["image", "theme", "mono"], help="the picture's colours, your theme's, or none")
+    s.add_argument("--width", type=int, help="columns at most (0 = as wide as fits)")
+    s.set_defaults(func=c.cmd_picture)
+
     s = sub.add_parser("animation", help="list login animations, or choose one", aliases=["animations", "animate"])
     s.add_argument("style", nargs="?")
-    s.add_argument("--speed", choices=list(c.SPEEDS))
+    s.add_argument("--speed", choices=list(SPEEDS))
     s.add_argument("--target", choices=["all", "art"], help="animate everything or just the art")
     s.add_argument("--try", dest="try_it", action="store_true", help="play it now (without saving the style)")
     s.set_defaults(func=c.cmd_animation)

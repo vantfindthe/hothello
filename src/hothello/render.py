@@ -6,6 +6,7 @@ from .feeds import Headline
 from .picker import Pick
 from .scraper import art_url
 from .textutil import cell_width, sanitize, truncate
+from .newsart import domain
 from .themes import FRAME_CHARS, RESET, Glyphs, Painter, Theme, art_color_fn, parse_color
 
 
@@ -88,18 +89,42 @@ def _colorize(line: str, y: int, color_at, painter: Painter, fallback) -> str:
     return "".join(out)
 
 
+def _colorize_cells(line: str, fg_row, bg_row, painter: Painter) -> str:
+    """Per-cell colours (a news picture): fg_row / bg_row hold an (r, g, b) per column."""
+    if not painter.enabled:
+        return line
+    out, current = [], ""
+    for x, ch in enumerate(line):
+        bg = ("rgb", bg_row[x]) if bg_row and x < len(bg_row) else None
+        fg = ("rgb", fg_row[x]) if fg_row and x < len(fg_row) and (ch != " " or bg) else None
+        seq = painter.sgr(fg=fg, bg=bg)
+        if seq != current:
+            out.append(RESET + seq if current else seq)
+            current = seq
+        out.append(ch)
+    if current:
+        out.append(RESET)
+    return "".join(out)
+
+
 def art_block(pick: Pick, theme: Theme, art_style: str, glyphs: Glyphs, painter: Painter,
-              cols: int, display: dict, links: bool) -> list[str]:
+              cols: int, display: dict, links: bool, picture_color: str = "image") -> list[str]:
     art, lines = pick.art, pick.lines
     if art is None or not lines:
         return []
     w = max(cell_width(line) for line in lines)
     h = len(lines)
     style = theme.art_style if art_style in ("", "theme", None) else art_style
+    if art.fg is not None and picture_color == "mono" and art.bg is None:
+        style = "plain"
     color_at = art_color_fn(style, theme.art_colors, theme.art_direction, w, h)
     text_color = parse_color(theme.text)
-    body = [_colorize(line, y, color_at, painter, text_color) + " " * (w - cell_width(line))
-            for y, line in enumerate(lines)]
+    if art.fg is not None and (picture_color == "image" or art.bg is not None):
+        body = [_colorize_cells(line, art.fg[y], art.bg[y] if art.bg else None, painter)
+                + " " * (w - cell_width(line)) for y, line in enumerate(lines)]
+    else:
+        body = [_colorize(line, y, color_at, painter, text_color) + " " * (w - cell_width(line))
+                for y, line in enumerate(lines)]
 
     frame = display.get("frame", "none")
     if glyphs.name == "ascii" and frame != "none":
@@ -109,15 +134,16 @@ def art_block(pick: Pick, theme: Theme, art_style: str, glyphs: Glyphs, painter:
     title_on = display.get("title", True)
     credit_on = display.get("credit", True)
     title = (art.title or "untitled") if title_on else ""
-    url = art_url(art.id)
-    short_url = url.split("://", 1)[1]
+    url = art.url or art_url(art.id)
+    short_url = domain(url) if art.url else url.split("://", 1)[1]
     frame_c, title_c, muted_c = parse_color(theme.frame), parse_color(theme.title), parse_color(theme.muted)
 
     if chars:
         tl, tr, bl, br, hz, vt = chars
         full_credit = f"{art.artist}{sep}{short_url}" if art.artist else short_url
-        # Widen the frame (up to the screen) so small art still gets its title and credit.
-        wanted = max(cell_width(title), cell_width(full_credit) if credit_on else 0) + 4
+        # Widen the frame (up to the screen) so small art still gets its title and credit;
+        # a news picture's long headline is shortened instead.
+        wanted = max(0 if art.url else cell_width(title), cell_width(full_credit) if credit_on else 0) + 4
         inner = max(w + 2, min(wanted, cols - 2))
         block_w = inner + 2
         pad = " " * max((cols - block_w) // 2, 0) if display.get("align") == "center" else ""
@@ -252,7 +278,7 @@ def system_block(info, system_cfg: dict, theme: Theme, glyphs: Glyphs, painter: 
         elif key in ("disk", "memory", "swap") and getattr(info, key):
             used, total = getattr(info, key)
             pct = used / total * 100 if total else 0.0
-            cells.append((key, {"disk": "Disk /", "memory": "Memory", "swap": "Swap"}[key],
+            cells.append((key, {"disk": f"Disk {info.disk_label}", "memory": "Memory", "swap": "Swap"}[key],
                           f"{pct:.0f}%" if private else f"{pct:.0f}% of {human(total)}", pct))
         elif key == "processes" and info.processes is not None:
             cells.append(("processes", "Processes", str(info.processes), None))

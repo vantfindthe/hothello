@@ -90,6 +90,7 @@ class Item:
     title: str
     link: str
     published: float | None
+    image: str | None = None
 
 
 _TAG = re.compile(r"<[^>]+>")
@@ -191,8 +192,46 @@ def parse_feed(data: bytes) -> tuple[str, list[Item]]:
             if guid is not None and (guid.text or "").strip().startswith("http"):
                 link = guid.text.strip()
         d = _child(el, "pubDate", "published", "updated", "date", "issued")
-        items.append(Item(title, link, parse_date(d.text if d is not None else None)))
+        items.append(Item(title, link, parse_date(d.text if d is not None else None), _item_image(el)))
     return feed_title, items
+
+
+MEDIA_NS = "{http://search.yahoo.com/mrss/}"
+_IMG_SRC = re.compile(r"""<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']""", re.I)
+
+
+def _item_image(el) -> str | None:
+    """The best picture an item offers: media:content / media:thumbnail (largest),
+    an image enclosure, or the first <img> in its HTML."""
+    best, best_w = None, -1
+    for node in el.iter():
+        tag = node.tag if isinstance(node.tag, str) else ""
+        url = node.get("url") or node.get("href")
+        if not url:
+            continue
+        kind = (node.get("type") or "").lower()
+        medium = (node.get("medium") or "").lower()
+        is_media = tag in (MEDIA_NS + "content", MEDIA_NS + "thumbnail")
+        is_enclosure = _local(tag) == "enclosure" or (_local(tag) == "link" and node.get("rel") == "enclosure")
+        if not (is_media or is_enclosure):
+            continue
+        if kind and not kind.startswith("image/") and medium != "image":
+            continue
+        if not kind and medium not in ("", "image") and not tag.endswith("thumbnail"):
+            continue
+        try:
+            w = int(node.get("width") or 0)
+        except ValueError:
+            w = 0
+        if w > best_w:
+            best, best_w = url, w
+    if best:
+        return html.unescape(best)
+    for name in ("encoded", "description", "content", "summary"):
+        node = _child(el, name)
+        if node is not None and node.text and (m := _IMG_SRC.search(html.unescape(node.text))):
+            return html.unescape(m.group(1))
+    return None
 
 
 def fetch_feed(url: str) -> tuple[str, list[Item]]:
@@ -210,6 +249,7 @@ class Headline:
     title: str
     link: str
     published: float | None
+    image: str | None = None
 
 
 def select_headlines(rows, feeds: list[Feed], *, count: int, per_source: int,
@@ -242,6 +282,7 @@ def select_headlines(rows, feeds: list[Feed], *, count: int, per_source: int,
                 if key in seen_titles:
                     continue
                 seen_titles.add(key)
-                out.append(Headline(feed.badge, feed.name, row["title"], row["link"], row["published"]))
+                out.append(Headline(feed.badge, feed.name, row["title"], row["link"], row["published"],
+                                    row["image"] if "image" in row.keys() else None))
                 break
     return out

@@ -28,6 +28,11 @@ CYCLE_MODES = {
     "random": "Random - pure random, repeats allowed",
 }
 
+ART_SOURCES = {
+    "collection": "The ASCII art collection (asciiart.website)",
+    "news": "The top headline's picture, turned into ASCII art",
+}
+
 PREFER_MODES = {
     "any": "Any size that fits",
     "large": "Prefer bigger pieces (fill the screen)",
@@ -48,6 +53,10 @@ DEFAULTS: dict = {
         "cycle": "shuffle",
         "change": "login",
         "prefer": "any",  # any | large - weight the pick towards pieces that fill the space
+        "source": "collection",  # collection | news - the top headline's picture, as ASCII art
+        "picture_style": "ascii",  # ascii | blocks
+        "picture_color": "image",  # image | theme | mono
+        "picture_width": 64,  # columns at most (0 = as wide as fits)
         "hide_flagged": True,  # skip pieces the site flags for nudity / explicit content
         "pages_per_refresh": 3,  # category pages fetched per background refresh
         "refresh_hours": 12,

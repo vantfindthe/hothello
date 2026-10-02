@@ -30,8 +30,30 @@ ln -s ~/hothello/.venv/bin/hothello ~/.local/bin/hothello
 
 Then open the settings UI with `hothello`, or change things from the command line (see [Commands](#commands)).
 
-Developed and tested on Ubuntu 24.04 with bash. Hooks for zsh, fish, PowerShell (Windows) and a system-wide
-`/etc/update-motd.d` script are included too.
+### Windows (PowerShell)
+
+```powershell
+git clone https://github.com/vantfindthe/hothello.git D:\hothello
+cd D:\hothello
+python -m venv .venv
+.venv\Scripts\pip install -e .
+.venv\Scripts\hothello install
+```
+
+* The greeting goes into your PowerShell profile (`Documents\WindowsPowerShell\profile.ps1`, plus
+  `Documents\PowerShell\profile.ps1` when PowerShell 7 is installed). That file runs before
+  `Microsoft.PowerShell_profile.ps1`, so the greeting appears above an oh-my-posh or starship prompt.
+* It also adds a `hothello` command to PowerShell, so you don't need to change your PATH.
+* It only greets interactive sessions. Scripts (`powershell -File`, `-Command`) and `-NonInteractive`
+  runs stay silent.
+* If your profile never runs, PowerShell's execution policy is blocking scripts; allow your own with
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+* Use Windows Terminal (or another modern terminal) for colours and Nerd Font glyphs.
+* On Windows the System section shows disk, memory, processes, your IP address and uptime, plus
+  "restart required" when Windows Update is waiting for a reboot.
+
+Tested on Ubuntu 24.04 (bash) and Windows 11 (Windows PowerShell 5.1). Hooks for zsh, fish, PowerShell 7 and a
+system-wide `/etc/update-motd.d` script are included too.
 
 ## What it shows
 
@@ -43,6 +65,8 @@ Developed and tested on Ubuntu 24.04 with bash. Hooks for zsh, fish, PowerShell 
   `hothello on hushlogin` hides Ubuntu's plain version so it isn't shown twice.
 * **News headlines** from 37 built-in feeds (BBC, NPR, The Guardian, NYT, Al Jazeera, DW, PBS, The Economist,
   Ars Technica, Nature, NASA and more) or your own RSS/Atom feeds, interleaved so no single source dominates.
+* **Optionally, the top story's picture as ASCII art** in place of the collection art (see
+  [News pictures](#news-pictures-as-ascii-art)).
 
 ### Themes
 
@@ -102,6 +126,27 @@ the system grid folds into a single alert line, so the art keeps its room and "r
 
 <br clear="right">
 
+### News pictures as ASCII art
+
+![The same news picture drawn as ASCII characters (left) and as half-block pixels (right)](docs/screenshots/news-picture.png)
+
+<sub>An original drawing with a placeholder headline; real news photos belong to their publishers.</sub>
+
+`hothello picture on` replaces the collection art with the picture of the top headline, turned into ASCII art.
+
+* **Where the picture comes from:** the background refresh takes it from the feed when there is one (BBC, The
+  Guardian, Ars Technica, NYT and others include pictures), otherwise from the article's own preview image. It
+  fetches the top three stories, shrinks each picture to a small grid and caches it, so logging in still never
+  waits on the network.
+* **Styles:** `ascii` draws it with characters chosen by brightness. `blocks` uses half-block "pixels", which
+  look more like the photo.
+* **Colours:** the picture's own colours, your theme's, or none (`--color image|theme|mono`).
+* **Size:** it's fitted to the space the art gets, at most `--width` columns (64 by default).
+* **Credit:** the frame shows the headline and credits the outlet, with a link to the article.
+* **Fallback:** if none of the top stories has a picture, the usual collection art is shown.
+
+Turning images into characters uses [Pillow](https://python-pillow.org/), which is installed with hothello.
+
 ### Login animations
 
 ![The nuke animation: a bomb drops, a fireball grows, and a blast wave reveals the greeting](docs/screenshots/nuke.gif)
@@ -129,7 +174,7 @@ session.
 
 | Tab | What you control |
 |---|---|
-| **Art** | Which categories to cycle (Space checks a category or a whole group; nothing checked means all), shuffle / rotate / random, every login / hourly / daily, prefer bigger pieces, hide flagged content, fetch more now |
+| **Art** | Collection art or the top story's picture (style, colours, width), which categories to cycle (Space checks a category or a whole group; nothing checked means all), shuffle / rotate / random, every login / hourly / daily, prefer bigger pieces, hide flagged content, fetch more now |
 | **Display** | Screen size presets or a custom size, smallest art worth showing, rows kept for your prompt, frame style, alignment, crop or skip when nothing fits, art name and source on or off, login animation |
 | **News** | Built-in feeds, your own feeds (checked before they're added), how many headlines, per-source cap, max age, refresh interval, clickable links |
 | **System** | Which facts to show, alerts, last login, usage bars, hiding the system's own login message, privacy mode |
@@ -152,7 +197,7 @@ hothello show | preview          print the greeting; preview doesn't use up the 
 hothello features                every feature and whether it's on
 hothello on|off|toggle NAME ...  show / hide features:  art headlines system header title credit frame
                                  badges ages links bars alerts lastlogin network privacy animation color
-                                 flagged hushlogin   (e.g.  hothello off headlines credit)
+                                 picture flagged hushlogin   (e.g.  hothello off headlines credit)
 
 hothello privacy [on|off]        privacy mode for recordings  (--alias NAME)
 hothello theme [NAME]            themes with examples  (--import-omp [NAME|PATH] for oh-my-posh)
@@ -163,6 +208,8 @@ hothello size [NAME|WxH]         screen size presets, or a custom size like 100x
 hothello cycle [MODE]            shuffle | rotate | random  --every login|hourly|daily  --prefer any|large
 hothello categories [SEARCH]     --add / --remove / --only NAME|GROUP|ID ...   --clear   --selected
 hothello feeds                   --add ID|URL  --remove ID|URL  --name NAME
+hothello picture [on|off]        the top story's picture as ASCII art  --style ascii|blocks
+                                 --color image|theme|mono  --width N
 hothello headlines               --count N  --per-source N  --max-age HOURS
 hothello animation [STYLE]       none lines slide wipe rain decode nuke random  --speed  --target all|art  --try
 hothello greeting [TEXT]         e.g.  hothello greeting 'Hey {user}, {greeting}!'
@@ -174,12 +221,12 @@ hothello install | uninstall     [--target bash|zsh|fish|pwsh|powershell|update-
 ```
 
 Config lives in `~/.config/hothello/config.json` (your own themes in `themes/`), and the cache in
-`~/.cache/hothello/hothello.db`.
+`~/.cache/hothello/hothello.db`. On Windows they're in `%APPDATA%\hothello` and `%LOCALAPPDATA%\hothello`.
 
 ## How it works
 
-* **At login** the hook runs `hothello show`, which reads the local cache, prints, and exits in well under a
-  tenth of a second. It never touches the network and never breaks your login: errors are swallowed (set
+* **At login** the hook runs `hothello show`, which reads the local cache, prints, and exits in a fraction of a
+  second (about 0.1 s on Linux, 0.2 s on Windows, where Python itself starts more slowly). It never touches the network and never breaks your login: errors are swallowed (set
   `HOTHELLO_DEBUG=1` to see them). It only runs in interactive shells, so `ssh host cmd`, scp and deploy scripts
   are unaffected.
 * **In the background** it starts a detached `hothello refresh --if-due` when the news is older than the

@@ -1,6 +1,9 @@
 import json
+import shutil
 import subprocess
 import sys
+
+import pytest
 
 from hothello import cli, hooks, themes
 from hothello.hooks import BEGIN, END, Target
@@ -20,6 +23,7 @@ def test_install_is_idempotent_and_reversible(tmp_path):
     assert rc.read_text() == "# mine\nalias ll='ls -l'\n"
 
 
+@pytest.mark.skipif(not shutil.which("bash"), reason="needs bash")
 def test_bash_snippet_is_valid_and_guarded(tmp_path):
     rc = tmp_path / "rc"
     rc.write_text(hooks.snippet("bash", "/nonexistent/python it's") + "\n")
@@ -84,6 +88,7 @@ def test_show_cli_runs(capsys):
     assert "No art cached yet" in out
 
 
+@pytest.mark.skipif(not shutil.which("head"), reason="needs head")
 def test_closed_pipe_is_not_an_error():
     proc = subprocess.run(f"{sys.executable} -m hothello features | head -1", shell=True,
                           capture_output=True, text=True)

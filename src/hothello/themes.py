@@ -195,9 +195,28 @@ def resolve_glyphs(setting: str) -> Glyphs:
     env = os.environ
     if env.get("POSH_THEME") or env.get("POSH_SESSION_ID") or env.get("STARSHIP_SHELL") or env.get("NERD_FONT"):
         return GLYPH_SETS["nerd"]
-    if shutil.which("oh-my-posh") or shutil.which("starship"):
-        return GLYPH_SETS["nerd"]  # prompt engines like these need a Nerd Font anyway
-    return GLYPH_SETS["unicode"]
+    return GLYPH_SETS["nerd" if _prompt_engine_installed() else "unicode"]
+
+
+def _prompt_engine_installed() -> bool:
+    """oh-my-posh / starship on PATH (they need a Nerd Font anyway).  Searching a long
+    PATH costs tens of milliseconds on Windows, so the answer is cached for a day."""
+    import time
+
+    cache = paths.cache_dir() / "detect.json"
+    try:
+        data = json.loads(cache.read_text(encoding="utf-8"))
+        if time.time() - data["at"] < 86400:
+            return bool(data["prompt_engine"])
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    found = bool(shutil.which("oh-my-posh") or shutil.which("starship"))
+    try:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps({"prompt_engine": found, "at": time.time()}), encoding="utf-8")
+    except OSError:
+        pass
+    return found
 
 
 FRAME_CHARS = {  # tl, tr, bl, br, horizontal, vertical

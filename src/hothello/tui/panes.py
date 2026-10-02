@@ -18,7 +18,8 @@ from textual.widgets import Button, DataTable, Input, Label, Select, SelectionLi
 
 from .. import hooks, themes
 from ..animate import SPEEDS, STYLES as ANIMATIONS
-from ..config import CHANGE_MODES, CYCLE_MODES, FRAMES, PREFER_MODES, SIZE_PRESETS
+from ..config import ART_SOURCES, CHANGE_MODES, CYCLE_MODES, FRAMES, PREFER_MODES, SIZE_PRESETS
+from ..newsart import COLORS as PICTURE_COLORS, STYLES as PICTURE_STYLES
 from ..feeds import PRESETS, enabled_feeds, fetch_feed
 from ..store import ArtFilter
 from ..sysinfo import SEGMENT_CHOICES
@@ -159,6 +160,16 @@ class ArtPane(Horizontal):
             yield Static(id="cat-summary", classes="hint")
         with VerticalScroll(classes="side"):
             yield switch_row("Show ASCII art", Switch(art["enabled"], id="art-enabled"))
+            yield field("Art comes from", Select([(v, k) for k, v in ART_SOURCES.items()], value=art["source"],
+                                                 allow_blank=False, id="art-source"),
+                        "Stories without a picture fall back to the collection.")
+            yield field("Picture style", Select([(v, k) for k, v in PICTURE_STYLES.items()],
+                                                value=art["picture_style"], allow_blank=False, id="art-picture_style"))
+            yield field("Picture colours", Select([(v, k) for k, v in PICTURE_COLORS.items()],
+                                                  value=art["picture_color"], allow_blank=False,
+                                                  id="art-picture_color"))
+            yield field("Picture width (columns, 0 = as wide as fits)",
+                        Input(str(art["picture_width"]), type="integer", id="art-picture_width", classes="short"))
             yield field("How to cycle", Select([(v, k) for k, v in CYCLE_MODES.items()],
                                                value=art["cycle"], allow_blank=False, id="art-cycle"))
             yield field("Change the art", Select([(v, k) for k, v in CHANGE_MODES.items()],
@@ -242,10 +253,20 @@ class ArtPane(Horizontal):
         self.app.cfg["art"][key] = event.value
         self.app.save_config()
 
-    @on(Select.Changed, "#art-cycle, #art-change, #art-prefer")
+    @on(Select.Changed, "#art-cycle, #art-change, #art-prefer, #art-source, #art-picture_style, #art-picture_color")
     def _select(self, event: Select.Changed) -> None:
-        self.app.cfg["art"][(event.select.id or "")[4:]] = event.value
+        key = (event.select.id or "")[4:]
+        changed = self.app.cfg["art"].get(key) != event.value
+        self.app.cfg["art"][key] = event.value
         self.app.save_config()
+        if key == "source" and event.value == "news" and changed:
+            self.app.fetch(news=True)  # download the pictures now rather than at the next refresh
+
+    @on(Input.Changed, "#art-picture_width")
+    def _picture_width(self, event: Input.Changed) -> None:
+        if (v := int_value(event, 0, 400)) is not None:
+            self.app.cfg["art"]["picture_width"] = v
+            self.app.save_config()
 
     @on(Input.Changed, "#art-pages")
     def _pages(self, event: Input.Changed) -> None:

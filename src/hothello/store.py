@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS headlines (
     feed TEXT, title TEXT, link TEXT, published REAL, fetched_at REAL,
     PRIMARY KEY (feed, link)
 );
+CREATE TABLE IF NOT EXISTS pictures (
+    link TEXT PRIMARY KEY, image_url TEXT, width INTEGER, height INTEGER, pixels BLOB,
+    error TEXT, fetched_at REAL
+);
 CREATE TABLE IF NOT EXISTS feed_status (
     feed TEXT PRIMARY KEY, title TEXT, fetched_at REAL, ok INTEGER, error TEXT, items INTEGER
 );
@@ -54,6 +58,9 @@ class Art:
     text: str
     categories: list[tuple[int, str]] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
+    url: str | None = None  # credit link, when it isn't an asciiart.website piece
+    fg: list | None = None  # per-cell colours (news pictures)
+    bg: list | None = None
 
     @property
     def lines(self) -> list[str]:
@@ -109,6 +116,10 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript(SCHEMA)
+        # Caches made by older versions lack newer columns.
+        if "image" not in {r[1] for r in self.db.execute("PRAGMA table_info(headlines)")}:
+            with self.db:
+                self.db.execute("ALTER TABLE headlines ADD COLUMN image TEXT")
 
     def close(self) -> None:
         self.db.close()
@@ -276,12 +287,14 @@ class Store:
 
     # -- headlines ---------------------------------------------------------------
 
-    def replace_headlines(self, feed: str, items: list[tuple[str, str, float | None]], when: float) -> None:
+    def replace_headlines(self, feed: str, items: list[tuple], when: float) -> None:
+        """items: (title, link, published) or (title, link, published, image url)."""
         with self.db:
             self.db.execute("DELETE FROM headlines WHERE feed = ?", (feed,))
             self.db.executemany(
-                "INSERT OR IGNORE INTO headlines (feed, title, link, published, fetched_at) VALUES (?, ?, ?, ?, ?)",
-                [(feed, title, link, published, when) for title, link, published in items],
+                """INSERT OR IGNORE INTO headlines (feed, title, link, published, fetched_at, image)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                [(feed, it[0], it[1], it[2], when, it[3] if len(it) > 3 else None) for it in items],
             )
 
     def headlines(self, feeds: list[str]) -> list[sqlite3.Row]:
@@ -289,9 +302,28 @@ class Store:
             return []
         marks = ",".join("?" * len(feeds))
         return self.db.execute(
-            f"SELECT feed, title, link, published, fetched_at FROM headlines WHERE feed IN ({marks})",
+            f"SELECT feed, title, link, published, fetched_at, image FROM headlines WHERE feed IN ({marks})",
             feeds,
         ).fetchall()
+
+    # -- news pictures -----------------------------------------------------------------------
+
+    def get_picture(self, link: str) -> sqlite3.Row | None:
+        return self.db.execute("SELECT * FROM pictures WHERE link = ?", (link,)).fetchone()
+
+    def put_picture(self, link: str, *, image_url: str | None, width: int = 0, height: int = 0,
+                    pixels: bytes | None = None, error: str | None = None, when: float) -> None:
+        with self.db:
+            self.db.execute(
+                """INSERT OR REPLACE INTO pictures (link, image_url, width, height, pixels, error, fetched_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (link, image_url, width, height, pixels, error, when),
+            )
+
+    def prune_pictures(self, keep: set[str], older_than: float) -> None:
+        with self.db:
+            rows = self.db.execute("SELECT link FROM pictures WHERE fetched_at < ?", (older_than,)).fetchall()
+            self.db.executemany("DELETE FROM pictures WHERE link = ?", [(r[0],) for r in rows if r[0] not in keep])
 
     def set_feed_status(self, feed: str, *, title: str | None, ok: bool, error: str | None, items: int, when: float) -> None:
         with self.db:

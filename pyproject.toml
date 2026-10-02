@@ -8,8 +8,9 @@ version = "0.1.0"
 description = "A different piece of ASCII art from asciiart.website, plus news headlines, at every login."
 readme = "README.md"
 requires-python = ">=3.10"
-# The login path (`hothello show`) is stdlib-only; Textual powers the settings UI.
-dependencies = ["textual>=1.0"]
+# The login path (`hothello show`) is stdlib-only; Textual powers the settings UI and
+# Pillow turns news pictures into art during the background refresh.
+dependencies = ["textual>=1.0", "pillow>=9.1"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

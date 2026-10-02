@@ -20,7 +20,8 @@ def user() -> str:
 
 
 def host() -> str:
-    return (platform.node() or socket.gethostname() or "localhost").split(".")[0]
+    # socket.gethostname() is instant everywhere; platform.node() runs a WMI query on Windows.
+    return (socket.gethostname() or platform.node() or "localhost").split(".")[0]
 
 
 def os_family() -> str:
@@ -36,9 +37,9 @@ def os_family() -> str:
 def os_name() -> str:
     if sys.platform == "win32":
         v = sys.getwindowsversion()
-        if v.major == 10 and v.build >= 22000:
-            return "Windows 11"
-        return f"Windows {platform.release()}"
+        if v.major == 10:
+            return "Windows 11" if v.build >= 22000 else "Windows 10"
+        return f"Windows {v.major}.{v.minor}"
     if sys.platform == "darwin":
         return f"macOS {platform.mac_ver()[0]}".strip()
     try:
@@ -52,6 +53,13 @@ def os_name() -> str:
     except OSError:
         pass
     return f"{platform.system()} {platform.release()}".strip()
+
+
+def kernel() -> str:
+    if sys.platform == "win32":
+        v = sys.getwindowsversion()
+        return f"{v.major}.{v.minor}.{v.build}"
+    return platform.release()
 
 
 def uptime_seconds() -> float | None:
@@ -162,7 +170,7 @@ def segments(theme_cfg: dict, *, now: float, shell: str | None = None, category:
         elif name == "category" and category:
             out.append(("category", category))
         elif name == "kernel":
-            out.append(("kernel", platform.release()))
+            out.append(("kernel", kernel()))
     return [(icon, text) for icon, text in out if text]
 
 

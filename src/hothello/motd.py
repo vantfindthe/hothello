@@ -71,9 +71,9 @@ def resolve_size(display: dict, measured: tuple[int, int] | None,
     return max(int(c), 20), (int(r) or None) if r is not None else None
 
 
-def current_headlines(cfg: dict, store: Store, now: float) -> list[Headline]:
+def current_headlines(cfg: dict, store: Store, now: float, *, even_if_hidden: bool = False) -> list[Headline]:
     news = cfg["news"]
-    if not news.get("enabled"):
+    if not news.get("enabled") and not even_if_hidden:
         return []
     feeds = enabled_feeds(news)
     return select_headlines(
@@ -91,6 +91,12 @@ def is_private(cfg: dict) -> bool:
     if env in ("0", "off", "no", "false"):
         return False
     return bool(cfg.get("privacy", {}).get("enabled"))
+
+
+def is_light(theme: themes.Theme) -> bool:
+    """Whether a theme is meant for a light terminal background (dark text)."""
+    c = themes.parse_color(theme.text)
+    return bool(c and c[0] == "rgb" and sum(c[1]) / 3 < 128)  # type: ignore[index]
 
 
 def plan(cfg: dict, store: Store, *, measured: tuple[int, int] | None, cols: int | None = None,
@@ -161,7 +167,15 @@ def build(cfg: dict, store: Store, *, cols: int | None = None, rows: int | None 
     links = hyperlinks if hyperlinks is not None else term.detect_hyperlinks(news_cfg.get("hyperlinks", "auto"))
 
     pick = Pick(None, [])
-    if art_cfg.get("enabled", True):
+    if art_cfg.get("enabled", True) and art_cfg.get("source") == "news":
+        from . import newsart
+
+        tops = p.headlines or current_headlines(cfg, store, now, even_if_hidden=True)
+        picture = newsart.picture_art(store, tops, art_cfg, max_w=p.art_width, max_h=p.art_height,
+                                      light_background=is_light(theme))
+        if picture is not None:
+            pick = Pick(picture, picture.lines, pool_left=None)  # type: ignore[arg-type]
+    if art_cfg.get("enabled", True) and pick.art is None:
         pick = picker.pick(store, art_cfg, display, max_width=p.art_width, max_height=p.art_height,
                            now=now, dry_run=dry_run, prefer_id=prefer_id)
 
@@ -176,7 +190,8 @@ def build(cfg: dict, store: Store, *, cols: int | None = None, rows: int | None 
             sysinfo.segments(theme_cfg, now=now, shell=shell, category=category, private=private, alias=alias),
             theme, gl, painter, p.usable,
         )
-    art_lines = render.art_block(pick, theme, theme_cfg.get("art_style", "theme"), gl, painter, p.usable, display, links)
+    art_lines = render.art_block(pick, theme, theme_cfg.get("art_style", "theme"), gl, painter, p.usable, display,
+                                 links, picture_color=art_cfg.get("picture_color", "image"))
     notice: list[str] = []
     if art_cfg.get("enabled", True) and not art_lines and store.art_count() == 0:
         notice = render.first_run_notice(painter, theme, gl, p.usable)

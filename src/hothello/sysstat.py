@@ -35,6 +35,7 @@ USER_PROCESS = 7
 class SysInfo:
     load: tuple[float, float, float] | None = None
     disk: tuple[int, int] | None = None  # used, total bytes
+    disk_label: str = "/"
     memory: tuple[int, int] | None = None
     swap: tuple[int, int] | None = None
     processes: int | None = None
@@ -159,8 +160,9 @@ def gather(system_cfg: dict) -> SysInfo:
     except OSError:
         pass
     if "disk" in items:
+        info.disk_label = os.environ.get("SystemDrive", "C:") if os.name == "nt" else "/"
         try:
-            du = shutil.disk_usage(os.environ.get("SystemDrive", "C:") + "\\" if os.name == "nt" else "/")
+            du = shutil.disk_usage(info.disk_label + "\\" if os.name == "nt" else "/")
             info.disk = (du.used, du.total)
         except OSError:
             pass
@@ -169,12 +171,15 @@ def gather(system_cfg: dict) -> SysInfo:
             info.memory, info.swap = parse_meminfo(text)
         elif os.name == "nt":
             info.memory = _windows_memory()
-    if "processes" in items and os.path.isdir("/proc/1"):
-        info.processes = sum(1 for n in os.listdir("/proc") if n.isdigit())
+    if "processes" in items:
+        if os.path.isdir("/proc/1"):
+            info.processes = sum(1 for n in os.listdir("/proc") if n.isdigit())
+        elif os.name == "nt":
+            info.processes = _windows_processes()
     if "users" in items and os.path.exists("/var/run/utmp"):
         info.users = len({r[0] for r in read_utmp(_utmp_tail("/var/run/utmp"))})
-    if "network" in items and sys.platform.startswith("linux"):
-        info.addresses = addresses()
+    if "network" in items:
+        info.addresses = (addresses() if sys.platform.startswith("linux") else []) or primary_addresses()
     if system_cfg.get("alerts", True):
         if (text := _read("/var/lib/update-notifier/updates-available")) is not None:
             info.updates, info.security, info.esm = parse_updates(text)
@@ -182,6 +187,8 @@ def gather(system_cfg: dict) -> SysInfo:
         info.restart_pkgs = (_read("/var/run/reboot-required.pkgs") or "").split()
         release = (_read("/var/lib/ubuntu-release-upgrader/release-upgrade-available") or "").strip()
         info.release = release.splitlines()[0].strip() if release else None
+        if os.name == "nt" and _windows_restart_pending():
+            info.restart, info.restart_pkgs = True, ["Windows Update"]
     if system_cfg.get("last_login", True) and os.path.exists("/var/log/wtmp"):
         try:
             tty = os.ttyname(0).removeprefix("/dev/")
@@ -192,6 +199,58 @@ def gather(system_cfg: dict) -> SysInfo:
         except Exception:
             pass
     return info
+
+
+def primary_addresses() -> list[tuple[str, str]]:
+    """The addresses this machine uses for outgoing traffic, found by "connecting" a UDP
+    socket to a reserved documentation address: no packet is sent.  Used where the
+    per-interface Linux sources aren't available (Windows, macOS, some containers)."""
+    out = []
+    for family, probe, label in ((socket.AF_INET, ("192.0.2.1", 9), "IPv4"),
+                                 (socket.AF_INET6, ("2001:db8::1", 9), "IPv6")):
+        try:
+            with socket.socket(family, socket.SOCK_DGRAM) as s:
+                s.connect(probe)
+                addr = s.getsockname()[0].split("%")[0]
+        except OSError:
+            continue
+        if addr and not addr.startswith(("127.", "0.0.0.0", "::", "fe80")):
+            out.append((label, addr))
+    return out
+
+
+def _windows_processes() -> int | None:
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        size = 1024
+        while True:
+            pids = (wintypes.DWORD * size)()
+            needed = wintypes.DWORD()
+            if not ctypes.windll.psapi.EnumProcesses(ctypes.byref(pids), ctypes.sizeof(pids), ctypes.byref(needed)):
+                return None
+            if needed.value < ctypes.sizeof(pids):
+                return needed.value // ctypes.sizeof(wintypes.DWORD)
+            size *= 2
+    except Exception:
+        return None
+
+
+def _windows_restart_pending() -> bool:
+    """Windows Update (or a servicing operation) is waiting for a reboot."""
+    try:
+        import winreg
+    except ImportError:
+        return False
+    for key in (r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired",
+                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending"):
+        try:
+            winreg.CloseKey(winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key))
+            return True
+        except OSError:
+            continue
+    return False
 
 
 def _windows_memory() -> tuple[int, int] | None:

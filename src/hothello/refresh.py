@@ -44,7 +44,7 @@ def art_due(cfg: dict, store: Store, now: float, pool_left: int | None = None) -
 
 def news_due(cfg: dict, store: Store, now: float) -> bool:
     news = cfg["news"]
-    if not news.get("enabled"):
+    if not news.get("enabled") and cfg["art"].get("source") != "news":
         return False
     last = store.kv_get("last_news_refresh") or 0
     if now - last > float(news.get("refresh_minutes", 30)) * 60:
@@ -52,7 +52,14 @@ def news_due(cfg: dict, store: Store, now: float) -> bool:
     from .feeds import enabled_feeds
 
     status = store.feed_status()
-    return any(f.url not in status for f in enabled_feeds(news))
+    if any(f.url not in status for f in enabled_feeds(news)):
+        return True
+    if cfg["art"].get("source") == "news":  # the picture option was just switched on
+        from .motd import current_headlines
+
+        tops = current_headlines(cfg, store, now, even_if_hidden=True)[:1]
+        return any(store.get_picture(h.link) is None for h in tops)
+    return False
 
 
 def refresh_catalog(store: Store, log=print) -> None:
@@ -128,10 +135,44 @@ def refresh_news(cfg: dict, store: Store, log=print) -> None:
             log(f"news: {feed.name}: {error}")
             continue
         title, items = parsed
-        store.replace_headlines(feed.url, [(it.title, it.link, it.published) for it in items], now)
+        store.replace_headlines(feed.url, [(it.title, it.link, it.published, it.image) for it in items], now)
         store.set_feed_status(feed.url, title=title, ok=True, error=None, items=len(items), when=now)
         log(f"news: {feed.name}: {len(items)} items")
     store.kv_set("last_news_refresh", now)
+    refresh_pictures(cfg, store, log)
+
+
+def refresh_pictures(cfg: dict, store: Store, log=print, limit: int = 3) -> None:
+    """Fetch and convert the pictures of the top few headlines (when that option is on)."""
+    if cfg["art"].get("source") != "news":
+        return
+    try:
+        import PIL  # noqa: F401
+    except ImportError:
+        log("pictures: need Pillow (pip install pillow)")
+        return
+    from . import net, newsart
+    from .motd import current_headlines
+
+    now = time.time()
+    tops = current_headlines(cfg, store, now, even_if_hidden=True)[:limit]
+    for h in tops:
+        if store.get_picture(h.link) is not None:
+            continue
+        image_url = h.image
+        try:
+            if not image_url:  # no picture in the feed: try the article's preview image
+                page = net.get(h.link, timeout=12, max_bytes=600_000, truncate=True)
+                image_url = newsart.page_image(page.decode("utf-8", "replace"), h.link)
+            if not image_url:
+                raise RuntimeError("no picture for this story")
+            w, ht, pixels = newsart.prepare(net.get(image_url, timeout=15, max_bytes=8_000_000))
+            store.put_picture(h.link, image_url=image_url, width=w, height=ht, pixels=pixels, when=now)
+            log(f"picture: {h.source}: {w}x{ht}")
+        except Exception as e:  # no picture, network trouble, unreadable image: remember and move on
+            store.put_picture(h.link, image_url=image_url, error=str(e)[:200] or e.__class__.__name__, when=now)
+            log(f"picture: {h.source}: {e}")
+    store.prune_pictures({h.link for h in tops}, now - 2 * 86400)
 
 
 def run(cfg: dict, store: Store, *, art: bool = True, news: bool = True, catalog: bool | None = None,
